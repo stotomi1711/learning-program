@@ -6,7 +6,11 @@ import {
   Button,
   Typography,
   Paper,
+  AppBar,
+  Toolbar,
+  IconButton,
 } from '@mui/material';
+import { Home } from '@mui/icons-material';
 
 function Register() {
   const handleSubmit = (e) => {
@@ -19,12 +23,31 @@ function Register() {
       sx={{
         minHeight: '100vh',
         background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
-        display: 'flex',
-        alignItems: 'center',
         position: 'relative',
         overflow: 'hidden',
       }}
     >
+      {/* 네비게이션 바 */}
+      <AppBar position="static" sx={{ 
+        background: 'rgba(15, 23, 42, 0.8)',
+        backdropFilter: 'blur(10px)',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
+      }}>
+        <Toolbar>
+          <IconButton
+            edge="start"
+            color="primary"
+            onClick={() => window.location.href = '/'}
+            sx={{ mr: 2 }}
+          >
+            <Home />
+          </IconButton>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1, color: 'primary.main', fontWeight: 'bold' }}>
+            AI 학습 플랫폼
+          </Typography>
+        </Toolbar>
+      </AppBar>
+
       {/* 별 배경 효과 */}
       <div className="space-background">
         {Array.from({ length: 50 }).map((_, i) => {
@@ -45,7 +68,7 @@ function Register() {
         })}
       </div>
 
-      <Container maxWidth="sm">
+      <Container maxWidth="sm" sx={{ pt: 8 }}>
         <Paper
           elevation={3}
           sx={{
