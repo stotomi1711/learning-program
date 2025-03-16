@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
+import axios from 'axios';
+import AxiosCtr from './AxiosCtr';
 import {
   Box,
   Container,
@@ -13,9 +15,53 @@ import {
 import { Home } from '@mui/icons-material';
 
 function Login() {
-  const handleSubmit = (e) => {
+  const [formData, setFormData] = useState({
+    userId: '',
+    password: ''
+  });
+
+  const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+
+  const { getCancelToken } = AxiosCtr();
+
+  // 입력값 변경 핸들러
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+  };
+
+  // 폼 제출 핸들러
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // 로그인 로직 구현
+    setError('');
+    setSuccessMessage('');
+
+    const cancelToken = getCancelToken();
+
+    console.log('로그인 정보', formData); 
+
+    try {
+      console.log('서버에 로그인 요청 전송 중...');
+      const response = await axios.post('http://localhost:5000/login', {
+        userId: formData.userId,
+        password: formData.password,
+      }, {
+        cancelToken: cancelToken,
+      });
+
+      if (response.data.success) {
+        setSuccessMessage('로그인 성공.');
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 2000);
+      } else {
+        setError(response.data.message || '로그인 실패');
+      }
+    } catch (error) {
+      setError('서버 오류가 발생했습니다.');
+      console.error(error);
+    }
   };
 
   return (
@@ -91,10 +137,14 @@ function Login() {
             로그인
           </Typography>
           <form onSubmit={handleSubmit}>
+            {error && <Typography color="error" sx={{ mt: 2, textAlign: 'center' }}>{error}</Typography>}
+            {successMessage && <Typography color="green" sx={{ mt: 2, textAlign: 'center' }}>{successMessage}</Typography>}
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
               <TextField
                 label="아이디"
                 type="text"
+                name="userId"
+                onChange={handleChange}
                 required
                 fullWidth
                 variant="outlined"
@@ -112,6 +162,8 @@ function Login() {
               <TextField
                 label="비밀번호"
                 type="password"
+                name="password"
+                onChange={handleChange}
                 required
                 fullWidth
                 variant="outlined"
