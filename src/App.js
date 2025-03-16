@@ -21,6 +21,7 @@ import {
 } from '@mui/icons-material';
 import './App.css';
 import Login from './Login';
+import Register from './Register';
 
 // 커스텀 테마 생성
 const theme = createTheme({
@@ -65,6 +66,7 @@ function App() {
       <ThemeProvider theme={theme}>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
           <Route path="/" element={
             <Box sx={{ 
               minHeight: '100vh',
