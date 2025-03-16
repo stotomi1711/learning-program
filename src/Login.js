@@ -70,8 +70,8 @@ function Login() {
           <form onSubmit={handleSubmit}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
               <TextField
-                label="이메일"
-                type="email"
+                label="아이디"
+                type="text"
                 required
                 fullWidth
                 variant="outlined"
@@ -126,7 +126,7 @@ function Login() {
               <Button
                 color="primary"
                 sx={{ textTransform: 'none' }}
-                onClick={() => {/* 회원가입 페이지로 이동 */}}
+                onClick={() => window.location.href = '/register'}
               >
                 회원가입
               </Button>
