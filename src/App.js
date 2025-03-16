@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import {
   AppBar,
@@ -12,6 +12,10 @@ import {
   Typography,
   createTheme,
   ThemeProvider,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import {
   School,
@@ -42,6 +46,23 @@ const theme = createTheme({
 });
 
 function App() {
+  const [openStartDialog, setOpenStartDialog] = useState(false);
+
+  const handleStartClick = () => {
+    setOpenStartDialog(true);
+  };
+
+  const handleStartAsGuest = () => {
+    // 비회원으로 시작하는 로직
+    setOpenStartDialog(false);
+    // TODO: 비회원 페이지로 이동
+  };
+
+  const handleLoginRedirect = () => {
+    setOpenStartDialog(false);
+    window.location.href = '/login';
+  };
+
   // 별 생성 함수
   const createStars = () => {
     const stars = [];
@@ -159,6 +180,7 @@ function App() {
                     <Button 
                       variant="contained" 
                       size="large"
+                      onClick={handleStartClick}
                       sx={{
                         px: 6,
                         py: 2,
@@ -177,6 +199,64 @@ function App() {
                   </Box>
                 </Container>
               </Box>
+
+              {/* 시작하기 모달 */}
+              <Dialog
+                open={openStartDialog}
+                onClose={() => setOpenStartDialog(false)}
+                PaperProps={{
+                  sx: {
+                    background: 'rgba(30, 41, 59, 0.95)',
+                    backdropFilter: 'blur(10px)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    borderRadius: '16px',
+                    minWidth: '300px',
+                  }
+                }}
+              >
+                <DialogTitle sx={{ textAlign: 'center', color: 'primary.main' }}>
+                  시작 방법 선택
+                </DialogTitle>
+                <DialogContent>
+                  <Typography variant="body1" color="text.secondary" align="center" sx={{ mb: 2 }}>
+                    학습을 어떤 방식으로 시작하시겠습니까?
+                  </Typography>
+                </DialogContent>
+                <DialogActions sx={{ flexDirection: 'column', gap: 2, p: 3 }}>
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    onClick={handleLoginRedirect}
+                    sx={{
+                      borderRadius: '50px',
+                      py: 1.5,
+                      background: 'linear-gradient(45deg, #2563eb 30%, #3b82f6 90%)',
+                      '&:hover': {
+                        background: 'linear-gradient(45deg, #1d4ed8 30%, #2563eb 90%)',
+                      }
+                    }}
+                  >
+                    로그인하기
+                  </Button>
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    onClick={handleStartAsGuest}
+                    sx={{
+                      borderRadius: '50px',
+                      py: 1.5,
+                      borderColor: 'rgba(96, 165, 250, 0.5)',
+                      color: 'primary.main',
+                      '&:hover': {
+                        borderColor: 'primary.main',
+                        backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                      }
+                    }}
+                  >
+                    비회원으로 시작하기
+                  </Button>
+                </DialogActions>
+              </Dialog>
 
               {/* 특징 섹션 */}
               <Container sx={{ py: 8 }} maxWidth="md">
