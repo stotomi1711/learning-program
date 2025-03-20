@@ -23,9 +23,13 @@ import {
   LiveHelp,
   Timeline,
 } from '@mui/icons-material';
+import CssBaseline from '@mui/material/CssBaseline';
 import './App.css';
 import Login from './Login';
 import Register from './Register';
+import ProfileSelect from './ProfileSelect';
+import Learning from './learning';
+import LearningHistory from './learning-history';
 
 // 커스텀 테마 생성
 const theme = createTheme({
@@ -53,9 +57,8 @@ function App() {
   };
 
   const handleStartAsGuest = () => {
-    // 비회원으로 시작하는 로직
     setOpenStartDialog(false);
-    // TODO: 비회원 페이지로 이동
+    window.location.href = '/profile-select';
   };
 
   const handleLoginRedirect = () => {
@@ -83,11 +86,10 @@ function App() {
   };
 
   return (
-    <Router>
-      <ThemeProvider theme={theme}>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <Router>
         <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
           <Route path="/" element={
             <Box sx={{ 
               minHeight: '100vh',
@@ -284,19 +286,27 @@ function App() {
                     }
                   ].map((feature, index) => (
                     <Grid item xs={12} sm={6} key={index}>
-                      <Card sx={{ 
-                        height: '100%',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        background: 'rgba(30, 41, 59, 0.8)',
-                        backdropFilter: 'blur(10px)',
-                        transition: 'transform 0.2s, box-shadow 0.2s',
-                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                        '&:hover': {
-                          transform: 'translateY(-5px)',
-                          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)',
-                        }
-                      }}>
+                      <Card 
+                        onClick={() => {
+                          if (feature.title === '학습 내용 관리') {
+                            window.location.href = '/learning-history';
+                          }
+                        }}
+                        sx={{ 
+                          height: '100%',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          background: 'rgba(30, 41, 59, 0.8)',
+                          backdropFilter: 'blur(10px)',
+                          transition: 'transform 0.2s, box-shadow 0.2s',
+                          border: '1px solid rgba(255, 255, 255, 0.1)',
+                          cursor: feature.title === '학습 내용 관리' ? 'pointer' : 'default',
+                          '&:hover': {
+                            transform: 'translateY(-5px)',
+                            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)',
+                          }
+                        }}
+                      >
                         <CardContent>
                           <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                             {feature.icon}
@@ -338,9 +348,14 @@ function App() {
               </Box>
             </Box>
           } />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/profile-select" element={<ProfileSelect />} />
+          <Route path="/learning" element={<Learning />} />
+          <Route path="/learning-history" element={<LearningHistory />} />
         </Routes>
-      </ThemeProvider>
-    </Router>
+      </Router>
+    </ThemeProvider>
   );
 }
 
