@@ -271,18 +271,18 @@ function App() {
                     },
                     {
                       icon: <School sx={{ fontSize: 40, color: 'primary.main' }} />,
-                      title: '분야별 커리큘럼',
-                      description: '수준과 목표에 맞는 개인화된 학습 콘텐츠를 제공합니다.'
+                      title: '분야별 문제 제공',
+                      description: '수준과 난이도를 선택하여 개인화된 학습 문제를 제공합니다.'
                     },
                     {
                       icon: <LiveHelp sx={{ fontSize: 40, color: 'primary.main' }} />,
                       title: '실시간 도움',
-                      description: 'AI 챗봇을 통한 24/7 학습 지원 및 질문 답변을 제공합니다.'
+                      description: 'AI 챗봇을 통한 학습 문제에 대한 힌트를 제공합니다.'
                     },
                     {
                       icon: <Timeline sx={{ fontSize: 40, color: 'primary.main' }} />,
-                      title: '학습 내용 관리',
-                      description: '상세한 내용 관리와 성과 분석으로 효율적인 학습을 지원합니다.'
+                      title: '학습 기록 관리',
+                      description: '학습한 내용 관리와 피드백 및 해설로 효율적인 학습을 지원합니다.'
                     }
                   ].map((feature, index) => (
                     <Grid item xs={12} sm={6} key={index}>
