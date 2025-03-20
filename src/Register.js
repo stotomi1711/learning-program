@@ -110,6 +110,23 @@ function Register() {
                 }}
               />
               <TextField
+                label="닉네임"
+                type="text"
+                required
+                fullWidth
+                variant="outlined"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: 'rgba(255, 255, 255, 0.2)',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: 'primary.main',
+                    },
+                  },
+                }}
+              />
+              <TextField
                 label="비밀번호"
                 type="password"
                 required
