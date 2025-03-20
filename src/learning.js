@@ -28,43 +28,85 @@ function Learning() {
   const generateQuestion = async () => {
     if (!keyword.trim()) return;
     
+    // 이미 문제가 있고 피드백을 받지 않은 경우
+    if (question && !showFeedback) {
+      alert('현재 문제에 답변을 제출하고 피드백을 받은 후에 새로운 문제를 생성해주세요.');
+      return;
+    }
+    
     setIsLoading(true);
     try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const response = await fetch('https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=AIzaSyC9PsJvz408SDMMNWMSpHUJXYXLT8RWqvc', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.REACT_APP_OPENAI_API_KEY}`,
         },
         body: JSON.stringify({
-          model: "gpt-3.5-turbo",
-          messages: [
-            {
-              role: "system",
-              content: "당신은 교육 전문가입니다. 주어진 키워드에 대해 학습 문제를 생성해주세요."
-            },
-            {
-              role: "user",
-              content: `키워드: ${keyword}에 대한 학습 문제를 생성해주세요. 문제와 정답을 함께 제공해주세요.`
-            }
-          ],
-          temperature: 0.7,
+          contents: [{
+            parts: [{
+              text: `다음 키워드에 대한 학습 문제를 생성해주세요. 문제와 정답을 명확하게 구분해서 작성해주세요.\n\n키워드: ${keyword}`
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.7,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 1024,
+          }
         }),
       });
 
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('API Error:', errorData);
+        throw new Error(errorData.error?.message || 'API 호출 중 오류가 발생했습니다.');
+      }
+
       const data = await response.json();
-      const generatedContent = data.choices[0].message.content;
+      console.log('API Response:', data);
       
-      // 문제와 정답 분리
-      const [questionText, answerText] = generatedContent.split('\n\n정답:');
-      setQuestion(questionText.replace('문제:', '').trim());
-      setAnswer(answerText.trim());
+      if (!data.candidates || !data.candidates[0]?.content?.parts?.[0]?.text) {
+        throw new Error('API 응답 형식이 올바르지 않습니다.');
+      }
+
+      const generatedContent = data.candidates[0].content.parts[0].text;
+      
+      // 문제와 정답 분리 로직 개선
+      let questionText = '';
+      let answerText = '';
+
+      // 다양한 구분자 시도
+      const separators = ['\n\n정답:', '\n정답:', '정답:', '답:', '\n답:'];
+      
+      for (const separator of separators) {
+        if (generatedContent.includes(separator)) {
+          const parts = generatedContent.split(separator);
+          questionText = parts[0].replace(/^문제:|^Q:|^질문:/, '').trim();
+          answerText = parts[1].trim();
+          break;
+        }
+      }
+
+      // 구분자를 찾지 못한 경우
+      if (!questionText || !answerText) {
+        // 첫 번째 줄을 문제로, 나머지를 정답으로 처리
+        const lines = generatedContent.split('\n').filter(line => line.trim());
+        if (lines.length >= 2) {
+          questionText = lines[0].replace(/^문제:|^Q:|^질문:/, '').trim();
+          answerText = lines.slice(1).join('\n').trim();
+        } else {
+          throw new Error('문제와 정답을 분리할 수 없습니다.');
+        }
+      }
+
+      setQuestion(questionText);
+      setAnswer(answerText);
       setShowFeedback(false);
       setUserAnswer('');
       setFeedback('');
     } catch (error) {
       console.error('Error generating question:', error);
-      setQuestion('문제 생성 중 오류가 발생했습니다. 다시 시도해주세요.');
+      setQuestion(`문제 생성 중 오류가 발생했습니다: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -75,30 +117,27 @@ function Learning() {
     
     setIsLoading(true);
     try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const response = await fetch('https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=AIzaSyC9PsJvz408SDMMNWMSpHUJXYXLT8RWqvc', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.REACT_APP_OPENAI_API_KEY}`,
         },
         body: JSON.stringify({
-          model: "gpt-3.5-turbo",
-          messages: [
-            {
-              role: "system",
-              content: "당신은 교육 전문가입니다. 학생의 답변을 평가하고 피드백을 제공해주세요."
-            },
-            {
-              role: "user",
-              content: `문제: ${question}\n정답: ${answer}\n학생 답변: ${userAnswer}\n\n학생의 답변을 평가하고 피드백을 제공해주세요.`
-            }
-          ],
-          temperature: 0.7,
+          contents: [{
+            parts: [{
+              text: `문제: ${question}\n정답: ${answer}\n학생 답변: ${userAnswer}\n\n학생의 답변을 평가하고 피드백을 제공해주세요.`
+            }]
+          }]
         }),
       });
 
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || 'API 호출 중 오류가 발생했습니다.');
+      }
+
       const data = await response.json();
-      setFeedback(data.choices[0].message.content);
+      setFeedback(data.candidates[0].content.parts[0].text);
       setShowFeedback(true);
     } catch (error) {
       console.error('Error checking answer:', error);
