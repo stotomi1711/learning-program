@@ -288,7 +288,7 @@ function App() {
                     <Grid item xs={12} sm={6} key={index}>
                       <Card 
                         onClick={() => {
-                          if (feature.title === '학습 내용 관리') {
+                          if (feature.title === '학습 기록 관리') {
                             window.location.href = '/learning-history';
                           }
                         }}
@@ -300,7 +300,7 @@ function App() {
                           backdropFilter: 'blur(10px)',
                           transition: 'transform 0.2s, box-shadow 0.2s',
                           border: '1px solid rgba(255, 255, 255, 0.1)',
-                          cursor: feature.title === '학습 내용 관리' ? 'pointer' : 'default',
+                          cursor: feature.title === '학습 기록 관리' ? 'pointer' : 'default',
                           '&:hover': {
                             transform: 'translateY(-5px)',
                             boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)',
