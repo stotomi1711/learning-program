@@ -17,6 +17,7 @@ import { Home, Password } from '@mui/icons-material';
 function Register() {
   const [formData, setFormData] = useState({
     userId: '',
+    nickname: '',
     password: '',
     passwordCk: ''
   });
@@ -40,8 +41,7 @@ function Register() {
 
     const cancelToken = getCancelToken();
 
-    console.log('로그인 정보', formData); 
-
+    console.log('로그인 정보', formData);  
     console.log('비밀번호:', formData.password);
     console.log('비밀번호 확인:', formData.passwordCk);
 
@@ -54,6 +54,7 @@ function Register() {
       console.log('서버에 로그인 요청 전송 중...'); 
       const response = await axios.post('http://localhost:5000/signup', {
         userId: formData.userId,
+        nickname: formData.nickname,
         password: formData.password,
       }, {
         cancelToken: cancelToken,
@@ -68,8 +69,19 @@ function Register() {
         setError(response.data.message || '회원가입 실패');
       }
     } catch (error) {
-      setError('서버 오류가 발생했습니다.');
-      console.error(error);
+      if (error.response) {
+        // 서버 응답이 있는 경우
+        console.error('서버 응답 오류:', error.response.data);
+        setError(`서버 오류: ${error.response.data.message}`);
+      } else if (error.request) {
+        // 요청은 했으나 응답이 없는 경우
+        console.error('응답 없음:', error.request);
+        setError('서버 응답이 없습니다. 다시 시도해 주세요.');
+      } else {
+        // 다른 오류가 발생한 경우
+        console.error('요청 오류:', error.message);
+        setError('요청 처리 중 오류가 발생했습니다.');
+      }
     }
   };
 
@@ -153,6 +165,25 @@ function Register() {
                 label="아이디"
                 type="text"
                 name="userId"
+                onChange={handleChange}
+                required
+                fullWidth
+                variant="outlined"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: 'rgba(255, 255, 255, 0.2)',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: 'primary.main',
+                    },
+                  },
+                }}
+              />
+              <TextField
+                label="닉네임"
+                type="text"
+                name="nickname"
                 onChange={handleChange}
                 required
                 fullWidth
