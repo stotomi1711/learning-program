@@ -1,158 +1,268 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Container,
   Typography,
-  AppBar,
-  Toolbar,
-  IconButton,
+  Button,
   Card,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
-  Divider,
-  Paper,
+  CardContent,
+  Grid,
   Chip,
+  CircularProgress,
 } from '@mui/material';
-import { Home, Lightbulb, AccessTime } from '@mui/icons-material';
+import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
+
+const API_URL = 'http://localhost:5000/api';
 
 function LearningHistory() {
-  const [learningHistory] = useState([]);
+  const navigate = useNavigate();
+  const [learningHistory, setLearningHistory] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetchLearningHistory();
+  }, []);
+
+  const fetchLearningHistory = async () => {
+    try {
+      const response = await fetch(`${API_URL}/learning-history`);
+      
+      if (!response.ok) {
+        throw new Error('학습 기록을 불러오는데 실패했습니다.');
+      }
+
+      const data = await response.json();
+      setLearningHistory(data);
+    } catch (error) {
+      console.error('학습 기록 조회 중 오류 발생:', error);
+      setError('학습 기록을 불러오는 중 오류가 발생했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getSubjectColor = (subject) => {
+    const colors = {
+      'Python': '#3776AB',
+      'JavaScript': '#F7DF1E',
+      'Java': '#007396',
+      'C++': '#00599C',
+      'C#': '#68217A',
+      '정보처리기사': '#4CAF50',
+      '컴퓨터활용능력2급': '#FF9800',
+      'SQLD': '#2196F3',
+      'ADsP': '#9C27B0',
+    };
+    return colors[subject] || '#2196F3';
+  };
+
+  const getDifficultyColor = (difficulty) => {
+    const colors = {
+      '초급': '#4CAF50',
+      '중급': '#FF9800',
+      '고급': '#F44336',
+    };
+    return colors[difficulty] || '#2196F3';
+  };
 
   return (
-    <Box sx={{ 
-      minHeight: '100vh',
-      position: 'relative',
-      background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
-      overflow: 'hidden',
-    }}>
-      {/* 우주 배경 */}
-      <div className="space-background">
-        {[...Array(50)].map((_, i) => (
-          <div
-            key={i}
-            className="star"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              width: `${Math.random() * 3}px`,
-              height: `${Math.random() * 3}px`,
-              animationDelay: `${Math.random() * 3}s`,
+    <Container maxWidth="lg" sx={{ mt: 8 }}>
+      <Box sx={{ textAlign: 'center', mb: 6 }}>
+        <Typography
+          variant="h3"
+          component="h1"
+          gutterBottom
+          sx={{
+            color: '#fff',
+            fontWeight: 'bold',
+            textShadow: '0 0 20px rgba(0,0,0,0.3)',
+          }}
+        >
+          학습 기록
+        </Typography>
+        <Typography
+          variant="h6"
+          sx={{
+            color: 'rgba(255,255,255,0.8)',
+            mb: 4,
+          }}
+        >
+          지금까지의 학습 기록을 확인해보세요
+        </Typography>
+      </Box>
+
+      {isLoading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+          <CircularProgress sx={{ color: '#fff' }} />
+        </Box>
+      ) : error ? (
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '200px',
+            background: 'rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(10px)',
+            borderRadius: '20px',
+            p: 4,
+            mb: 4,
+          }}
+        >
+          <Typography
+            variant="h6"
+            sx={{
+              color: 'rgba(255,255,255,0.8)',
+              mb: 2,
+              textAlign: 'center',
             }}
-          />
-        ))}
-      </div>
-
-      {/* 네비게이션 바 */}
-      <AppBar position="static" sx={{ 
-        background: 'rgba(15, 23, 42, 0.8)',
-        backdropFilter: 'blur(10px)',
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
-      }}>
-        <Toolbar>
-          <IconButton
-            edge="start"
-            color="inherit"
-            aria-label="home"
-            onClick={() => window.location.href = '/'}
-            sx={{ mr: 2 }}
           >
-            <Home />
-          </IconButton>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1, color: 'primary.main', fontWeight: 'bold' }}>
-            학습 기록
+            {error}
           </Typography>
-        </Toolbar>
-      </AppBar>
-
-      {/* 학습 기록 컨텐츠 */}
-      <Container maxWidth="md" sx={{ py: 8 }}>
-        <Card sx={{ 
-          background: 'rgba(30, 41, 59, 0.8)',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-        }}>
-          <Box sx={{ p: 3 }}>
-            <Typography variant="h4" gutterBottom sx={{ color: 'primary.main', mb: 4 }}>
-              학습 기록
-            </Typography>
-
-            {learningHistory.length === 0 ? (
-              <Typography variant="body1" color="text.secondary" align="center" sx={{ py: 4 }}>
-                아직 학습 기록이 없습니다.
-              </Typography>
-            ) : (
-              <List>
-                {learningHistory.map((item, index) => (
-                  <React.Fragment key={item.id}>
-                    <ListItem
+        </Box>
+      ) : learningHistory.length === 0 ? (
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '200px',
+            background: 'rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(10px)',
+            borderRadius: '20px',
+            p: 4,
+            mb: 4,
+          }}
+        >
+          <Typography
+            variant="h6"
+            sx={{
+              color: 'rgba(255,255,255,0.8)',
+              mb: 2,
+              textAlign: 'center',
+            }}
+          >
+            아직 학습 기록이 없습니다
+          </Typography>
+        </Box>
+      ) : (
+        <Grid container spacing={3}>
+          {learningHistory.map((record) => (
+            <Grid item xs={12} key={record._id}>
+              <Card
+                sx={{
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  backdropFilter: 'blur(10px)',
+                  borderRadius: '20px',
+                  boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+                  border: '1px solid rgba(255, 255, 255, 0.18)',
+                  transition: 'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out',
+                  '&:hover': {
+                    transform: 'translateY(-5px)',
+                    boxShadow: '0 12px 40px 0 rgba(31, 38, 135, 0.5)',
+                  },
+                }}
+              >
+                <CardContent>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Typography
+                      variant="h6"
                       sx={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'flex-start',
-                        gap: 2,
-                        py: 3,
+                        color: '#fff',
+                        fontWeight: 'bold',
                       }}
                     >
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
-                        <ListItemIcon>
-                          <Lightbulb sx={{ color: 'primary.main' }} />
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                              <Typography variant="h6" sx={{ color: 'primary.main' }}>
-                                {item.keyword}
-                              </Typography>
-                              <Chip
-                                label={item.status === 'completed' ? '완료' : '진행 중'}
-                                color={item.status === 'completed' ? 'success' : 'primary'}
-                                size="small"
-                              />
-                            </Box>
-                          }
-                          secondary={
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-                              <AccessTime sx={{ fontSize: 16, color: 'text.secondary' }} />
-                              <Typography variant="body2" color="text.secondary">
-                                {item.date} {item.time}
-                              </Typography>
-                            </Box>
-                          }
-                        />
-                      </Box>
+                      {new Date(record.createdAt).toLocaleDateString()}
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Chip
+                        label={record.subject}
+                        sx={{
+                          backgroundColor: getSubjectColor(record.subject),
+                          color: '#fff',
+                          fontWeight: 'bold',
+                        }}
+                      />
+                      <Chip
+                        label={record.difficulty}
+                        sx={{
+                          backgroundColor: getDifficultyColor(record.difficulty),
+                          color: '#fff',
+                          fontWeight: 'bold',
+                        }}
+                      />
+                    </Box>
+                  </Box>
+                  <Typography
+                    variant="h5"
+                    sx={{
+                      color: '#fff',
+                      fontWeight: 'bold',
+                      mb: 2,
+                    }}
+                  >
+                    {record.profileName}
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+                    {record.keywords.map((keyword, index) => (
+                      <Chip
+                        key={index}
+                        label={keyword}
+                        sx={{
+                          backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                          color: '#fff',
+                          border: '1px solid rgba(255, 255, 255, 0.2)',
+                        }}
+                      />
+                    ))}
+                  </Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography
+                      variant="body1"
+                      sx={{
+                        color: 'rgba(255,255,255,0.7)',
+                      }}
+                    >
+                      학습 시간: {record.timeSpent}
+                    </Typography>
+                    <Typography
+                      variant="body1"
+                      sx={{
+                        color: 'rgba(255,255,255,0.7)',
+                      }}
+                    >
+                      진행률: {record.progress}%
+                    </Typography>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      )}
 
-                      <Paper sx={{ p: 2, width: '100%', background: 'rgba(15, 23, 42, 0.5)' }}>
-                        <Typography variant="subtitle1" gutterBottom sx={{ color: 'primary.main' }}>
-                          문제
-                        </Typography>
-                        <Typography variant="body1" sx={{ mb: 2 }}>
-                          {item.question}
-                        </Typography>
-                        <Typography variant="subtitle1" gutterBottom sx={{ color: 'primary.main' }}>
-                          답변
-                        </Typography>
-                        <Typography variant="body1" sx={{ mb: 2 }}>
-                          {item.userAnswer}
-                        </Typography>
-                        <Typography variant="subtitle1" gutterBottom sx={{ color: 'primary.main' }}>
-                          피드백
-                        </Typography>
-                        <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
-                          {item.feedback}
-                        </Typography>
-                      </Paper>
-                    </ListItem>
-                    {index < learningHistory.length - 1 && <Divider sx={{ my: 2 }} />}
-                  </React.Fragment>
-                ))}
-              </List>
-            )}
-          </Box>
-        </Card>
-      </Container>
-    </Box>
+      <Box sx={{ mt: 6, textAlign: 'center' }}>
+        <Button
+          variant="outlined"
+          startIcon={<ArrowBackIcon />}
+          onClick={() => navigate('/')}
+          sx={{
+            color: '#fff',
+            borderColor: 'rgba(255,255,255,0.5)',
+            '&:hover': {
+              borderColor: '#fff',
+              backgroundColor: 'rgba(255,255,255,0.1)',
+            },
+          }}
+        >
+          홈으로 돌아가기
+        </Button>
+      </Box>
+    </Container>
   );
 }
 

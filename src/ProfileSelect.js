@@ -1,341 +1,395 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Container,
   Typography,
-  AppBar,
-  Toolbar,
-  IconButton,
-  Grid,
+  Button,
   Card,
   CardContent,
-  Button,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
+  IconButton,
+  Grid,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
   TextField,
+  Chip,
 } from '@mui/material';
-import { Home, Add, Edit } from '@mui/icons-material';
+import { Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
 
 function ProfileSelect() {
-  const [openNewProfile, setOpenNewProfile] = useState(false);
+  const navigate = useNavigate();
   const [profiles, setProfiles] = useState([]);
+  const [openDialog, setOpenDialog] = useState(false);
   const [newProfile, setNewProfile] = useState({
     name: '',
-    role: '',
-    description: '',
+    category: '',
+    difficulty: '',
   });
 
-  const handleCreateProfile = () => {
-    setOpenNewProfile(true);
-  };
+  const categories = [
+    { value: '프로그래밍 언어', label: '프로그래밍 언어' },
+    { value: '자격증', label: '자격증' },
+  ];
 
-  const handleCloseDialog = () => {
-    setOpenNewProfile(false);
-    setNewProfile({ name: '', role: '', description: '' });
-  };
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setNewProfile(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleSubmitProfile = () => {
-    if (!newProfile.name || !newProfile.role || !newProfile.description) {
-      return;
+  const handleAddProfile = () => {
+    if (newProfile.name.trim() && newProfile.category && newProfile.difficulty) {
+      setProfiles([...profiles, { ...newProfile, id: Date.now() }]);
+      setNewProfile({ name: '', category: '', difficulty: '' });
+      setOpenDialog(false);
     }
-
-    const profile = {
-      id: Date.now(),
-      ...newProfile,
-      avatar: '👤', // 기본 아바타
-    };
-
-    setProfiles(prev => [...prev, profile]);
-    handleCloseDialog();
   };
 
-  const handleProfileSelect = (profileId) => {
-    // 프로필 선택 시 학습 페이지로 이동
-    window.location.href = '/learning';
+  const handleDeleteProfile = (profileId) => {
+    setProfiles(profiles.filter(profile => profile.id !== profileId));
+  };
+
+  const getCategoryColor = (category) => {
+    const colors = {
+      'Python': '#3776AB',
+      'JavaScript': '#F7DF1E',
+      'Java': '#007396',
+      'C++': '#00599C',
+      'C#': '#68217A',
+      '정보처리기사': '#4CAF50',
+      '컴퓨터활용능력2급': '#FF9800',
+      'SQLD': '#2196F3',
+      'ADsP': '#9C27B0',
+    };
+    return colors[category] || '#2196F3';
+  };
+
+  const getDifficultyColor = (difficulty) => {
+    const colors = {
+      '초급': '#4CAF50',
+      '중급': '#FF9800',
+      '고급': '#F44336',
+    };
+    return colors[difficulty] || '#2196F3';
   };
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
-        position: 'relative',
-        overflow: 'hidden',
-      }}
-    >
-      {/* 네비게이션 바 */}
-      <AppBar position="static" sx={{ 
-        background: 'rgba(15, 23, 42, 0.8)',
-        backdropFilter: 'blur(10px)',
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
-      }}>
-        <Toolbar>
-          <IconButton
-            edge="start"
-            color="primary"
-            onClick={() => window.location.href = '/'}
-            sx={{ mr: 2 }}
-          >
-            <Home />
-          </IconButton>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1, color: 'primary.main', fontWeight: 'bold' }}>
-            AI 학습 플랫폼
-          </Typography>
-        </Toolbar>
-      </AppBar>
-
-      {/* 별 배경 효과 */}
-      <div className="space-background">
-        {Array.from({ length: 50 }).map((_, i) => {
-          const size = Math.random() * 3;
-          return (
-            <div
-              key={i}
-              className="star"
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                width: `${size}px`,
-                height: `${size}px`,
-                animationDelay: `${Math.random() * 3}s`,
-              }}
-            />
-          );
-        })}
-      </div>
-
-      <Container maxWidth="md" sx={{ pt: 8 }}>
+    <Container maxWidth="lg" sx={{ mt: 8 }}>
+      <Box sx={{ textAlign: 'center', mb: 6 }}>
         <Typography
-          variant="h4"
-          align="center"
+          variant="h3"
+          component="h1"
+          gutterBottom
           sx={{
-            color: 'primary.main',
-            mb: 6,
+            color: '#fff',
             fontWeight: 'bold',
+            textShadow: '0 0 20px rgba(0,0,0,0.3)',
           }}
         >
-          프로필 선택
+          학습 프로필
         </Typography>
+        <Typography
+          variant="h6"
+          sx={{
+            color: 'rgba(255,255,255,0.8)',
+            mb: 4,
+          }}
+        >
+          나만의 학습 프로필을 만들어보세요
+        </Typography>
+      </Box>
 
+      {profiles.length === 0 ? (
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '200px',
+            background: 'rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(10px)',
+            borderRadius: '20px',
+            p: 4,
+            mb: 4,
+          }}
+        >
+          <Typography
+            variant="h6"
+            sx={{
+              color: 'rgba(255,255,255,0.8)',
+              mb: 2,
+              textAlign: 'center',
+            }}
+          >
+            아직 생성된 프로필이 없습니다
+          </Typography>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setOpenDialog(true)}
+            sx={{
+              background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+              color: 'white',
+              '&:hover': {
+                background: 'linear-gradient(45deg, #1976D2 30%, #1E88E5 90%)',
+              },
+            }}
+          >
+            새 프로필 만들기
+          </Button>
+        </Box>
+      ) : (
         <Grid container spacing={3}>
           {profiles.map((profile) => (
             <Grid item xs={12} sm={6} md={4} key={profile.id}>
               <Card
                 sx={{
                   height: '100%',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  background: 'rgba(30, 41, 59, 0.8)',
+                  background: 'rgba(255, 255, 255, 0.1)',
                   backdropFilter: 'blur(10px)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  transition: 'transform 0.2s, box-shadow 0.2s',
+                  borderRadius: '20px',
+                  boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+                  border: '1px solid rgba(255, 255, 255, 0.18)',
+                  position: 'relative',
+                  transition: 'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out',
                   '&:hover': {
                     transform: 'translateY(-5px)',
-                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)',
-                  }
+                    boxShadow: '0 12px 40px 0 rgba(31, 38, 135, 0.5)',
+                  },
                 }}
               >
-                <CardContent sx={{ textAlign: 'center', pb: 2 }}>
-                  <Typography variant="h1" sx={{ mb: 2 }}>
-                    {profile.avatar}
-                  </Typography>
-                  <Typography variant="h5" component="div" sx={{ mb: 1, fontWeight: 'bold' }}>
+                <IconButton
+                  onClick={() => handleDeleteProfile(profile.id)}
+                  sx={{
+                    position: 'absolute',
+                    top: 8,
+                    right: 8,
+                    color: 'rgba(255,255,255,0.8)',
+                    '&:hover': {
+                      color: '#ff4444',
+                    },
+                  }}
+                >
+                  <DeleteIcon />
+                </IconButton>
+                <CardContent
+                  sx={{
+                    cursor: 'pointer',
+                    '&:hover': { background: 'rgba(255,255,255,0.05)' },
+                  }}
+                  onClick={() => navigate('/learning')}
+                >
+                  <Typography
+                    variant="h5"
+                    component="h2"
+                    gutterBottom
+                    sx={{ 
+                      color: '#fff',
+                      fontWeight: 'bold',
+                      textShadow: '0 0 10px rgba(0,0,0,0.3)',
+                    }}
+                  >
                     {profile.name}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    {profile.role}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {profile.description}
+                  <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+                    <Chip
+                      label={profile.category}
+                      sx={{
+                        backgroundColor: getCategoryColor(profile.category),
+                        color: '#fff',
+                        fontWeight: 'bold',
+                      }}
+                    />
+                    <Chip
+                      label={profile.difficulty}
+                      sx={{
+                        backgroundColor: getDifficultyColor(profile.difficulty),
+                        color: '#fff',
+                        fontWeight: 'bold',
+                      }}
+                    />
+                  </Box>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: 'rgba(255,255,255,0.7)',
+                      fontStyle: 'italic',
+                    }}
+                  >
+                    {profile.category} {profile.difficulty} 레벨
                   </Typography>
                 </CardContent>
-                <Box sx={{ mt: 'auto', p: 2, display: 'flex', gap: 1 }}>
-                  <Button
-                    fullWidth
-                    variant="contained"
-                    onClick={() => handleProfileSelect(profile.id)}
-                    sx={{
-                      borderRadius: '50px',
-                      background: 'linear-gradient(45deg, #2563eb 30%, #3b82f6 90%)',
-                      '&:hover': {
-                        background: 'linear-gradient(45deg, #1d4ed8 30%, #2563eb 90%)',
-                      }
-                    }}
-                  >
-                    선택하기
-                  </Button>
-                  <IconButton
-                    color="primary"
-                    sx={{
-                      border: '1px solid rgba(96, 165, 250, 0.5)',
-                      '&:hover': {
-                        borderColor: 'primary.main',
-                        backgroundColor: 'rgba(96, 165, 250, 0.1)',
-                      }
-                    }}
-                  >
-                    <Edit />
-                  </IconButton>
-                </Box>
               </Card>
             </Grid>
           ))}
-          
-          {/* 새 프로필 추가 카드 */}
           <Grid item xs={12} sm={6} md={4}>
             <Card
               sx={{
                 height: '100%',
-                display: 'flex',
-                flexDirection: 'column',
-                background: 'rgba(30, 41, 59, 0.8)',
+                background: 'rgba(255, 255, 255, 0.1)',
                 backdropFilter: 'blur(10px)',
-                border: '1px dashed rgba(255, 255, 255, 0.2)',
+                borderRadius: '20px',
+                boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+                border: '1px solid rgba(255, 255, 255, 0.18)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 cursor: 'pointer',
-                transition: 'transform 0.2s, box-shadow 0.2s',
+                transition: 'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out',
                 '&:hover': {
                   transform: 'translateY(-5px)',
-                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)',
-                }
+                  boxShadow: '0 12px 40px 0 rgba(31, 38, 135, 0.5)',
+                  background: 'rgba(255,255,255,0.15)',
+                },
               }}
-              onClick={handleCreateProfile}
+              onClick={() => setOpenDialog(true)}
             >
-              <CardContent sx={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                height: '100%',
-                minHeight: '300px'
-              }}>
-                <Add sx={{ fontSize: 60, color: 'primary.main', mb: 2 }} />
-                <Typography variant="h6" component="div" sx={{ color: 'primary.main' }}>
-                  새 프로필 만들기
-                </Typography>
+              <CardContent>
+                <Box sx={{ textAlign: 'center' }}>
+                  <AddIcon sx={{ fontSize: 40, color: '#fff', mb: 1 }} />
+                  <Typography variant="h6" sx={{ color: '#fff' }}>
+                    새 프로필 추가
+                  </Typography>
+                </Box>
               </CardContent>
             </Card>
           </Grid>
         </Grid>
-      </Container>
+      )}
 
-      {/* 새 프로필 생성 다이얼로그 */}
       <Dialog
-        open={openNewProfile}
-        onClose={handleCloseDialog}
+        open={openDialog}
+        onClose={() => setOpenDialog(false)}
         PaperProps={{
           sx: {
             background: 'rgba(30, 41, 59, 0.95)',
             backdropFilter: 'blur(10px)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            borderRadius: '16px',
-          }
+            borderRadius: '20px',
+          },
         }}
       >
-        <DialogTitle sx={{ textAlign: 'center', color: 'primary.main' }}>
-          새 프로필 만들기
-        </DialogTitle>
+        <DialogTitle sx={{ color: '#fff' }}>새 프로필 만들기</DialogTitle>
         <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
-            <TextField
-              label="프로필 이름"
-              name="name"
-              value={newProfile.name}
-              onChange={handleInputChange}
-              variant="outlined"
-              fullWidth
-              required
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  '& fieldset': {
-                    borderColor: 'rgba(255, 255, 255, 0.2)',
-                  },
-                  '&:hover fieldset': {
-                    borderColor: 'primary.main',
-                  },
-                },
-              }}
-            />
-            <TextField
-              label="역할"
-              name="role"
-              value={newProfile.role}
-              onChange={handleInputChange}
-              variant="outlined"
-              fullWidth
-              required
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  '& fieldset': {
-                    borderColor: 'rgba(255, 255, 255, 0.2)',
-                  },
-                  '&:hover fieldset': {
-                    borderColor: 'primary.main',
-                  },
-                },
-              }}
-            />
-            <TextField
-              label="설명"
-              name="description"
-              value={newProfile.description}
-              onChange={handleInputChange}
-              variant="outlined"
-              fullWidth
-              multiline
-              rows={3}
-              required
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  '& fieldset': {
-                    borderColor: 'rgba(255, 255, 255, 0.2)',
-                  },
-                  '&:hover fieldset': {
-                    borderColor: 'primary.main',
-                  },
-                },
-              }}
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ p: 3 }}>
-          <Button
-            onClick={handleCloseDialog}
+          <TextField
+            margin="dense"
+            label="프로필 이름"
+            fullWidth
+            value={newProfile.name}
+            onChange={(e) => setNewProfile({ ...newProfile, name: e.target.value })}
             sx={{
-              color: 'text.secondary',
-              '&:hover': {
-                color: 'primary.main',
-              }
+              mt: 2,
+              '& .MuiOutlinedInput-root': {
+                color: '#fff',
+                '& fieldset': {
+                  borderColor: 'rgba(255,255,255,0.3)',
+                },
+                '&:hover fieldset': {
+                  borderColor: 'rgba(255,255,255,0.5)',
+                },
+              },
+              '& .MuiInputLabel-root': {
+                color: 'rgba(255,255,255,0.7)',
+              },
             }}
+          />
+
+          <FormControl fullWidth sx={{ mt: 2 }}>
+            <InputLabel sx={{ color: 'rgba(255,255,255,0.7)' }}>학습 주제</InputLabel>
+            <Select
+              value={newProfile.category}
+              onChange={(e) => setNewProfile({ ...newProfile, category: e.target.value })}
+              label="학습 주제"
+              sx={{
+                color: '#fff',
+                '& .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'rgba(255,255,255,0.3)',
+                },
+                '&:hover .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'rgba(255,255,255,0.5)',
+                },
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'rgba(255,255,255,0.7)',
+                },
+              }}
+            >
+              {categories.map((category) => (
+                <MenuItem key={category.value} value={category.value}>
+                  {category.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <FormControl fullWidth sx={{ mt: 2 }}>
+            <InputLabel sx={{ color: 'rgba(255,255,255,0.7)' }}>난이도</InputLabel>
+            <Select
+              value={newProfile.difficulty}
+              onChange={(e) => setNewProfile({ ...newProfile, difficulty: e.target.value })}
+              label="난이도"
+              sx={{
+                color: '#fff',
+                '& .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'rgba(255,255,255,0.3)',
+                },
+                '&:hover .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'rgba(255,255,255,0.5)',
+                },
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'rgba(255,255,255,0.7)',
+                },
+              }}
+            >
+              <MenuItem value="초급">초급</MenuItem>
+              <MenuItem value="중급">중급</MenuItem>
+              <MenuItem value="고급">고급</MenuItem>
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setOpenDialog(false)}
+            sx={{ color: 'rgba(255,255,255,0.7)' }}
           >
             취소
           </Button>
           <Button
-            variant="contained"
-            onClick={handleSubmitProfile}
-            disabled={!newProfile.name || !newProfile.role || !newProfile.description}
+            onClick={handleAddProfile}
+            disabled={!newProfile.name.trim() || !newProfile.category || !newProfile.difficulty}
             sx={{
-              borderRadius: '50px',
-              background: 'linear-gradient(45deg, #2563eb 30%, #3b82f6 90%)',
+              background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+              color: 'white',
               '&:hover': {
-                background: 'linear-gradient(45deg, #1d4ed8 30%, #2563eb 90%)',
-              }
+                background: 'linear-gradient(45deg, #1976D2 30%, #1E88E5 90%)',
+              },
+              '&.Mui-disabled': {
+                background: 'rgba(255,255,255,0.1)',
+                color: 'rgba(255,255,255,0.3)',
+              },
             }}
           >
-            생성하기
+            만들기
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+
+      <Box sx={{ mt: 6, textAlign: 'center' }}>
+        <Button
+          variant="outlined"
+          onClick={() => navigate('/')}
+          sx={{
+            color: '#fff',
+            borderColor: 'rgba(255,255,255,0.5)',
+            '&:hover': {
+              borderColor: '#fff',
+              backgroundColor: 'rgba(255,255,255,0.1)',
+            },
+          }}
+        >
+          홈으로 돌아가기
+        </Button>
+      </Box>
+    </Container>
   );
 }
 

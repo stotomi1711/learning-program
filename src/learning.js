@@ -3,338 +3,390 @@ import {
   Box,
   Container,
   Typography,
-  AppBar,
-  Toolbar,
-  IconButton,
+  Button,
+  Grid,
+  Divider,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  CircularProgress,
   Card,
   CardContent,
-  TextField,
-  Button,
-  CircularProgress,
-  Paper,
-  Divider,
 } from '@mui/material';
-import { Home, Refresh } from '@mui/icons-material';
+import { useUser } from './contexts/UserContext';
 
 function Learning() {
-  const [keyword, setKeyword] = useState('');
-  const [question, setQuestion] = useState('');
-  const [answer, setAnswer] = useState('');
-  const [userAnswer, setUserAnswer] = useState('');
-  const [feedback, setFeedback] = useState('');
+  const { user } = useUser();
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [showInfoDialog, setShowInfoDialog] = useState(false);
+  const [showCustomInputDialog, setShowCustomInputDialog] = useState(false);
+  const [customInput, setCustomInput] = useState('');
+  const [generatedQuestion, setGeneratedQuestion] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [showFeedback, setShowFeedback] = useState(false);
 
-  const generateQuestion = async () => {
-    if (!keyword.trim()) return;
-    
-    // 이미 문제가 있고 피드백을 받지 않은 경우
-    if (question && !showFeedback) {
-      alert('현재 문제에 답변을 제출하고 피드백을 받은 후에 새로운 문제를 생성해주세요.');
-      return;
+  const languages = [
+    { name: 'Python', color: '#3776AB' },
+    { name: 'C', color: '#A8B9CC' },
+    { name: 'C#', color: '#68217A' },
+    { name: 'Java', color: '#007396' },
+    { name: 'JavaScript', color: '#F7DF1E' },
+    { name: 'PHP', color: '#777BB4' },
+    { name: 'C++', color: '#00599C' },
+    { name: '직접입력', color: '#68217A' },
+  ];
+
+  const certifications = [
+    { name: '컴퓨터활용능력1급', color: '#FF6B6B' },
+    { name: '컴퓨터활용능력2급', color: '#4ECDC4' },
+    { name: '정보처리기사', color: '#45B7D1' },
+    { name: '직접입력', color: '#68217A' },
+  ];
+
+  const handleLanguageSelect = (language) => {
+    if (language.name === '직접입력') {
+      setShowCustomInputDialog(true);
+    } else {
+      setSelectedItem(language);
+      setShowInfoDialog(true);
     }
-    
+  };
+
+  const handleCertificationSelect = (certification) => {
+    if (certification.name === '직접입력') {
+      setShowCustomInputDialog(true);
+    } else {
+      setSelectedItem(certification);
+      setShowInfoDialog(true);
+    }
+  };
+
+  const handleStartLearning = async () => {
+    if (!selectedItem) return;
+
     setIsLoading(true);
     try {
-      const response = await fetch('https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=AIzaSyC9PsJvz408SDMMNWMSpHUJXYXLT8RWqvc', {
+      const response = await fetch('http://localhost:3001/api/generate-question', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: `다음 키워드에 대한 학습 문제를 생성해주세요. 문제와 정답을 명확하게 구분해서 작성해주세요.\n\n키워드: ${keyword}`
-            }]
-          }],
-          generationConfig: {
-            temperature: 0.7,
-            topK: 40,
-            topP: 0.95,
-            maxOutputTokens: 1024,
-          }
+          keyword: selectedItem.name,
+          userId: user?.userId,
         }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('API Error:', errorData);
-        throw new Error(errorData.error?.message || 'API 호출 중 오류가 발생했습니다.');
+        throw new Error(errorData.message || '문제 생성에 실패했습니다.');
       }
 
       const data = await response.json();
-      console.log('API Response:', data);
-      
-      if (!data.candidates || !data.candidates[0]?.content?.parts?.[0]?.text) {
-        throw new Error('API 응답 형식이 올바르지 않습니다.');
+      if (!data.question) {
+        throw new Error('생성된 문제가 없습니다.');
       }
-
-      const generatedContent = data.candidates[0].content.parts[0].text;
-      
-      // 문제와 정답 분리 로직 개선
-      let questionText = '';
-      let answerText = '';
-
-      // 다양한 구분자 시도
-      const separators = ['\n\n정답:', '\n정답:', '정답:', '답:', '\n답:'];
-      
-      for (const separator of separators) {
-        if (generatedContent.includes(separator)) {
-          const parts = generatedContent.split(separator);
-          questionText = parts[0].replace(/^문제:|^Q:|^질문:/, '').trim();
-          answerText = parts[1].trim();
-          break;
-        }
-      }
-
-      // 구분자를 찾지 못한 경우
-      if (!questionText || !answerText) {
-        // 첫 번째 줄을 문제로, 나머지를 정답으로 처리
-        const lines = generatedContent.split('\n').filter(line => line.trim());
-        if (lines.length >= 2) {
-          questionText = lines[0].replace(/^문제:|^Q:|^질문:/, '').trim();
-          answerText = lines.slice(1).join('\n').trim();
-        } else {
-          throw new Error('문제와 정답을 분리할 수 없습니다.');
-        }
-      }
-
-      setQuestion(questionText);
-      setAnswer(answerText);
-      setShowFeedback(false);
-      setUserAnswer('');
-      setFeedback('');
+      setGeneratedQuestion(data.question);
+      setShowInfoDialog(false);
     } catch (error) {
-      console.error('Error generating question:', error);
-      setQuestion(`문제 생성 중 오류가 발생했습니다: ${error.message}`);
+      console.error('Error:', error);
+      alert(`문제 생성 중 오류가 발생했습니다: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const checkAnswer = async () => {
-    if (!userAnswer.trim()) return;
-    
-    setIsLoading(true);
-    try {
-      const response = await fetch('https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=AIzaSyC9PsJvz408SDMMNWMSpHUJXYXLT8RWqvc', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: `문제: ${question}\n정답: ${answer}\n학생 답변: ${userAnswer}\n\n학생의 답변을 평가하고 피드백을 제공해주세요.`
-            }]
-          }]
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error?.message || 'API 호출 중 오류가 발생했습니다.');
-      }
-
-      const data = await response.json();
-      setFeedback(data.candidates[0].content.parts[0].text);
-      setShowFeedback(true);
-    } catch (error) {
-      console.error('Error checking answer:', error);
-      setFeedback('답변 평가 중 오류가 발생했습니다. 다시 시도해주세요.');
-    } finally {
-      setIsLoading(false);
+  const handleCustomInput = () => {
+    if (customInput.trim()) {
+      setSelectedItem({ name: customInput, color: '#68217A' });
+      setShowCustomInputDialog(false);
+      setShowInfoDialog(true);
+      setCustomInput('');
     }
   };
+
+  if (generatedQuestion) {
+    return (
+      <Container maxWidth="md" sx={{ mt: 4 }}>
+        <Card sx={{ 
+          background: 'rgba(255, 255, 255, 0.1)',
+          backdropFilter: 'blur(10px)',
+          borderRadius: '20px',
+          boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+          border: '1px solid rgba(255, 255, 255, 0.18)',
+        }}>
+          <CardContent sx={{ p: 4 }}>
+            <Typography variant="h5" component="h2" gutterBottom sx={{ color: '#fff', mb: 3 }}>
+              생성된 문제
+            </Typography>
+            <Typography variant="body1" sx={{ color: '#fff', whiteSpace: 'pre-line', mb: 3 }}>
+              {generatedQuestion}
+            </Typography>
+            <Button
+              variant="contained"
+              onClick={() => setGeneratedQuestion(null)}
+              sx={{
+                background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+                color: 'white',
+                padding: '10px 20px',
+                borderRadius: '20px',
+                '&:hover': {
+                  background: 'linear-gradient(45deg, #1976D2 30%, #1E88E5 90%)',
+                },
+              }}
+            >
+              돌아가기
+            </Button>
+          </CardContent>
+        </Card>
+      </Container>
+    );
+  }
 
   return (
     <Box sx={{ 
       minHeight: '100vh',
       position: 'relative',
-      background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+      background: '#000000',
       overflow: 'hidden',
     }}>
-      {/* 우주 배경 */}
-      <div className="space-background">
-        {[...Array(50)].map((_, i) => (
-          <div
-            key={i}
-            className="star"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              width: `${Math.random() * 3}px`,
-              height: `${Math.random() * 3}px`,
-              animationDelay: `${Math.random() * 3}s`,
-            }}
-          />
-        ))}
-      </div>
-
-      {/* 네비게이션 바 */}
-      <AppBar position="static" sx={{ 
-        background: 'rgba(15, 23, 42, 0.8)',
-        backdropFilter: 'blur(10px)',
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
-      }}>
-        <Toolbar>
-          <IconButton
-            edge="start"
-            color="inherit"
-            aria-label="home"
-            onClick={() => window.location.href = '/'}
-            sx={{ mr: 2 }}
-          >
-            <Home />
-          </IconButton>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1, color: 'primary.main', fontWeight: 'bold' }}>
-            AI 학습 센터
+      <Container maxWidth="md" sx={{ mt: 8 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
+          <Typography variant="h4" component="h1" gutterBottom align="center" color="primary.main" sx={{ flex: 1 }}>
+            학습 주제 선택
           </Typography>
-        </Toolbar>
-      </AppBar>
+        </Box>
+        <Typography variant="body1" align="center" color="text.secondary" paragraph>
+          학습하고 싶은 주제를 선택해주세요.
+        </Typography>
 
-      {/* AI 학습 컨텐츠 */}
-      <Container maxWidth="md" sx={{ py: 8 }}>
-        <Card sx={{ 
-          background: 'rgba(30, 41, 59, 0.8)',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-        }}>
-          <CardContent>
-            <Typography variant="h4" gutterBottom sx={{ color: 'primary.main', mb: 4 }}>
-              AI 학습
-            </Typography>
-
-            {/* 키워드 입력 */}
-            <Box sx={{ display: 'flex', gap: 2, mb: 4 }}>
-              <TextField
-                fullWidth
-                label="학습하고 싶은 키워드를 입력하세요"
-                variant="outlined"
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    '& fieldset': {
-                      borderColor: 'rgba(255, 255, 255, 0.2)',
-                    },
-                    '&:hover fieldset': {
-                      borderColor: 'primary.main',
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: 'primary.main',
-                    },
-                  },
-                }}
-              />
+        {/* 프로그래밍 언어 선택 섹션 */}
+        <Typography variant="h5" sx={{ mt: 4, mb: 2, color: 'primary.main' }}>
+          프로그래밍 언어
+        </Typography>
+        <Grid container spacing={3}>
+          {languages.map((language) => (
+            <Grid item xs={12} sm={6} md={4} key={language.name}>
               <Button
-                variant="contained"
-                onClick={generateQuestion}
-                disabled={isLoading || !keyword.trim()}
+                fullWidth
+                onClick={() => handleLanguageSelect(language)}
                 sx={{
-                  borderRadius: '50px',
-                  px: 4,
-                  background: 'linear-gradient(45deg, #2563eb 30%, #3b82f6 90%)',
+                  height: '120px',
+                  borderRadius: '16px',
+                  background: `linear-gradient(45deg, ${language.color} 30%, ${language.color}99 90%)`,
+                  color: 'white',
+                  fontSize: '1.2rem',
+                  fontWeight: 'bold',
+                  textTransform: 'none',
+                  transition: 'all 0.3s ease',
                   '&:hover': {
-                    background: 'linear-gradient(45deg, #1d4ed8 30%, #2563eb 90%)',
+                    transform: 'translateY(-5px)',
+                    boxShadow: `0 10px 20px ${language.color}40`,
                   }
                 }}
               >
-                {isLoading ? <CircularProgress size={24} /> : '문제 생성'}
+                {language.name}
               </Button>
-            </Box>
+            </Grid>
+          ))}
+        </Grid>
 
-            {/* 문제 표시 */}
-            {question && (
-              <Paper sx={{ p: 3, mb: 4, background: 'rgba(15, 23, 42, 0.5)' }}>
-                <Typography variant="h6" gutterBottom sx={{ color: 'primary.main' }}>
-                  문제
-                </Typography>
-                <Typography variant="body1" sx={{ mb: 3 }}>
-                  {question}
-                </Typography>
-                <TextField
-                  fullWidth
-                  multiline
-                  rows={4}
-                  label="답변을 입력하세요"
-                  variant="outlined"
-                  value={userAnswer}
-                  onChange={(e) => setUserAnswer(e.target.value)}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      '& fieldset': {
-                        borderColor: 'rgba(255, 255, 255, 0.2)',
-                      },
-                      '&:hover fieldset': {
-                        borderColor: 'primary.main',
-                      },
-                      '&.Mui-focused fieldset': {
-                        borderColor: 'primary.main',
-                      },
-                    },
-                  }}
-                />
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-                  <Button
-                    variant="contained"
-                    onClick={checkAnswer}
-                    disabled={isLoading || !userAnswer.trim()}
-                    sx={{
-                      borderRadius: '50px',
-                      px: 4,
-                      background: 'linear-gradient(45deg, #2563eb 30%, #3b82f6 90%)',
-                      '&:hover': {
-                        background: 'linear-gradient(45deg, #1d4ed8 30%, #2563eb 90%)',
-                      }
-                    }}
-                  >
-                    {isLoading ? <CircularProgress size={24} /> : '답변 제출'}
-                  </Button>
-                </Box>
-              </Paper>
-            )}
+        <Divider sx={{ my: 6, borderColor: 'rgba(255, 255, 255, 0.1)' }} />
 
-            {/* 피드백 표시 */}
-            {showFeedback && feedback && (
-              <Paper sx={{ p: 3, background: 'rgba(15, 23, 42, 0.5)' }}>
-                <Typography variant="h6" gutterBottom sx={{ color: 'primary.main' }}>
-                  피드백
-                </Typography>
-                <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
-                  {feedback}
-                </Typography>
-                <Divider sx={{ my: 2 }} />
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <Button
-                    startIcon={<Refresh />}
-                    onClick={() => {
-                      setKeyword('');
-                      setQuestion('');
-                      setAnswer('');
-                      setUserAnswer('');
-                      setFeedback('');
-                      setShowFeedback(false);
-                    }}
-                    sx={{
-                      borderRadius: '50px',
-                      px: 4,
-                      color: 'primary.main',
-                      '&:hover': {
-                        backgroundColor: 'rgba(96, 165, 250, 0.1)',
-                      }
-                    }}
-                  >
-                    새로운 문제
-                  </Button>
-                </Box>
-              </Paper>
+        {/* 자격증 선택 섹션 */}
+        <Typography variant="h5" sx={{ mb: 2, color: 'primary.main' }}>
+          자격증
+        </Typography>
+        <Grid container spacing={3}>
+          {certifications.map((certification) => (
+            <Grid item xs={12} sm={6} md={4} key={certification.name}>
+              <Button
+                fullWidth
+                onClick={() => handleCertificationSelect(certification)}
+                sx={{
+                  height: '120px',
+                  borderRadius: '16px',
+                  background: `linear-gradient(45deg, ${certification.color} 30%, ${certification.color}99 90%)`,
+                  color: 'white',
+                  fontSize: '1.2rem',
+                  fontWeight: 'bold',
+                  textTransform: 'none',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    transform: 'translateY(-5px)',
+                    boxShadow: `0 10px 20px ${certification.color}40`,
+                  }
+                }}
+              >
+                {certification.name}
+              </Button>
+            </Grid>
+          ))}
+        </Grid>
+
+        {/* 직접 입력 다이얼로그 */}
+        <Dialog
+          open={showCustomInputDialog}
+          onClose={() => setShowCustomInputDialog(false)}
+          PaperProps={{
+            sx: {
+              background: 'rgba(30, 41, 59, 0.95)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '16px',
+              minWidth: '300px',
+            }
+          }}
+        >
+          <DialogTitle sx={{ textAlign: 'center', color: 'primary.main' }}>
+            직접 입력
+          </DialogTitle>
+          <DialogContent>
+            <TextField
+              autoFocus
+              margin="dense"
+              label="학습 주제 입력"
+              type="text"
+              fullWidth
+              variant="outlined"
+              value={customInput}
+              onChange={(e) => setCustomInput(e.target.value)}
+              sx={{
+                mt: 2,
+                '& .MuiOutlinedInput-root': {
+                  color: 'white',
+                  '& fieldset': {
+                    borderColor: 'rgba(255, 255, 255, 0.23)',
+                  },
+                  '&:hover fieldset': {
+                    borderColor: 'primary.main',
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: 'primary.main',
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  color: 'rgba(255, 255, 255, 0.7)',
+                },
+                '& .MuiInputLabel-root.Mui-focused': {
+                  color: 'primary.main',
+                },
+              }}
+            />
+          </DialogContent>
+          <DialogActions sx={{ flexDirection: 'column', gap: 2, p: 3 }}>
+            <Button
+              fullWidth
+              variant="contained"
+              onClick={handleCustomInput}
+              disabled={!customInput.trim()}
+              sx={{
+                borderRadius: '50px',
+                py: 1.5,
+                background: 'linear-gradient(45deg, #2563eb 30%, #3b82f6 90%)',
+                '&:hover': {
+                  background: 'linear-gradient(45deg, #1d4ed8 30%, #2563eb 90%)',
+                },
+                '&.Mui-disabled': {
+                  background: 'rgba(255, 255, 255, 0.12)',
+                  color: 'rgba(255, 255, 255, 0.3)',
+                }
+              }}
+            >
+              확인
+            </Button>
+            <Button
+              fullWidth
+              variant="outlined"
+              onClick={() => setShowCustomInputDialog(false)}
+              sx={{
+                borderRadius: '50px',
+                py: 1.5,
+                borderColor: 'rgba(96, 165, 250, 0.5)',
+                color: 'primary.main',
+                '&:hover': {
+                  borderColor: 'primary.main',
+                  backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                }
+              }}
+            >
+              취소
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* 안내 다이얼로그 */}
+        <Dialog
+          open={showInfoDialog}
+          onClose={() => setShowInfoDialog(false)}
+          PaperProps={{
+            sx: {
+              background: 'rgba(30, 41, 59, 0.95)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '16px',
+            }
+          }}
+        >
+          <DialogTitle color="primary.main">
+            {selectedItem?.name} 학습 안내
+          </DialogTitle>
+          <DialogContent>
+            <Typography variant="body1" color="text.secondary" paragraph>
+              {selectedItem?.name}에 대한 학습을 시작하시겠습니까?
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              선택하신 주제에 대한 맞춤형 학습 콘텐츠가 제공됩니다.
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setShowInfoDialog(false)}>취소</Button>
+            <Button 
+              onClick={handleStartLearning}
+              variant="contained"
+              sx={{
+                background: `linear-gradient(45deg, ${selectedItem?.color} 30%, ${selectedItem?.color}99 90%)`,
+                '&:hover': {
+                  background: `linear-gradient(45deg, ${selectedItem?.color}99 30%, ${selectedItem?.color} 90%)`,
+                }
+              }}
+            >
+              학습 시작하기
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Box sx={{ mt: 4, textAlign: 'center' }}>
+          <Button
+            variant="contained"
+            onClick={handleStartLearning}
+            disabled={!selectedItem || isLoading}
+            sx={{
+              background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+              color: 'white',
+              padding: '15px 30px',
+              borderRadius: '25px',
+              fontSize: '1.1rem',
+              '&:hover': {
+                background: 'linear-gradient(45deg, #1976D2 30%, #1E88E5 90%)',
+              },
+              '&:disabled': {
+                background: 'rgba(255, 255, 255, 0.1)',
+                color: 'rgba(255, 255, 255, 0.5)',
+              },
+            }}
+          >
+            {isLoading ? (
+              <CircularProgress size={24} sx={{ color: 'white' }} />
+            ) : (
+              '학습 시작하기'
             )}
-          </CardContent>
-        </Card>
+          </Button>
+        </Box>
       </Container>
     </Box>
   );
 }
 
-export default Learning; 
+export default Learning;
