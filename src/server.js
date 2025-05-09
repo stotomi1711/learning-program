@@ -294,7 +294,7 @@ app.post('/api/generate-question', async (req, res) => {
   console.log('문제 생성 요청:', { userId, keyword });
   
   try {
-    const prompt = `${keyword}에 대한 하나의 코드문제제만 생성해주세요. 질문은 명확하고 구체적이어야 하며, 학습자가 이해하기 쉬워야 합니다.`;
+    const prompt = `${keyword}에 대한 하나의 문제만 생성해주세요. 질문은 명확하고 구체적이어야 하며, 학습자가 이해하기 쉬워야 하고 문제의 유형은 다양해야합니다.`;
     console.log('생성할 프롬프트:', prompt);
     
     const question = await callGemini(prompt);
@@ -349,10 +349,9 @@ app.post('/api/submit-answer', async (req, res) => {
       답변: ${answer}
       
       다음 형식으로 피드백을 제공해주세요:
-      1. 정답 여부 (맞았습니다/틀렸습니다)
-      2. 답변의 정확성 평가
-      3. 개선이 필요한 부분
-      4. 추가 학습을 위한 제안
+      1. 정답 여부 (정답 / 오답)
+      2. 문제에 대한 정답
+      3. 문제해설
     `;
     
     const feedback = await callGemini(prompt);

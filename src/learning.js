@@ -14,6 +14,7 @@ import {
   CircularProgress,
   Card,
   CardContent,
+  Chip,
 } from '@mui/material';
 import { useUser } from './contexts/UserContext';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -205,20 +206,50 @@ function Learning() {
           borderRadius: '20px',
           boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
           border: '1px solid rgba(255, 255, 255, 0.18)',
+          overflow: 'hidden'
         }}>
           <CardContent sx={{ p: 4 }}>
-            <Typography variant="h5" component="h2" gutterBottom sx={{ color: '#fff', mb: 3 }}>
-              {selectedItem?.name} 문제
-            </Typography>
-            <Typography variant="body1" sx={{ 
-              color: '#fff', 
-              whiteSpace: 'pre-line', 
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
               mb: 3,
-              fontSize: '1.1rem',
-              lineHeight: 1.6
+              gap: 2
             }}>
-              {generatedQuestion}
-            </Typography>
+              <Chip
+                label={selectedItem?.name}
+                sx={{
+                  backgroundColor: selectedItem?.color,
+                  color: '#fff',
+                  fontWeight: 'bold',
+                  fontSize: '1rem',
+                  padding: '20px 10px'
+                }}
+              />
+              <Typography variant="h5" component="h2" sx={{ 
+                color: '#fff',
+                fontWeight: 'bold',
+                flex: 1
+              }}>
+                학습 문제
+              </Typography>
+            </Box>
+
+            <Box sx={{
+              background: 'rgba(0, 0, 0, 0.2)',
+              borderRadius: '12px',
+              p: 3,
+              mb: 4,
+              border: '1px solid rgba(255, 255, 255, 0.1)'
+            }}>
+              <Typography variant="body1" sx={{ 
+                color: '#fff', 
+                whiteSpace: 'pre-line', 
+                fontSize: '1.1rem',
+                lineHeight: 1.6
+              }}>
+                {generatedQuestion}
+              </Typography>
+            </Box>
 
             <TextField
               fullWidth
@@ -227,10 +258,13 @@ function Learning() {
               value={userAnswer}
               onChange={(e) => setUserAnswer(e.target.value)}
               placeholder="답변을 입력해주세요"
+              disabled={feedback !== ''}
               sx={{
-                mb: 3,
+                mb: 4,
                 '& .MuiOutlinedInput-root': {
                   color: '#fff',
+                  background: 'rgba(0, 0, 0, 0.2)',
+                  borderRadius: '12px',
                   '& fieldset': {
                     borderColor: 'rgba(255, 255, 255, 0.23)',
                   },
@@ -240,6 +274,12 @@ function Learning() {
                   '&.Mui-focused fieldset': {
                     borderColor: 'primary.main',
                   },
+                  '&.Mui-disabled': {
+                    background: 'rgba(0, 0, 0, 0.3)',
+                    '& fieldset': {
+                      borderColor: 'rgba(255, 255, 255, 0.1)',
+                    },
+                  },
                 },
                 '& .MuiInputLabel-root': {
                   color: 'rgba(255, 255, 255, 0.7)',
@@ -247,31 +287,47 @@ function Learning() {
                 '& .MuiInputLabel-root.Mui-focused': {
                   color: 'primary.main',
                 },
+                '& .MuiInputLabel-root.Mui-disabled': {
+                  color: 'rgba(255, 255, 255, 0.3)',
+                },
               }}
             />
 
             {feedback && (
               <Box sx={{ 
                 p: 3,
-                mb: 3,
+                mb: 4,
                 borderRadius: '12px',
-                backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid rgba(255, 255, 255, 0.1)'
+                background: 'linear-gradient(135deg, rgba(0, 180, 216, 0.1) 0%, rgba(0, 150, 199, 0.1) 100%)',
+                border: '1px solid rgba(0, 180, 216, 0.2)',
+                boxShadow: '0 4px 20px rgba(0, 180, 216, 0.1)'
               }}>
-                <Typography variant="subtitle1" sx={{ color: 'primary.main', mb: 2 }}>
-                  피드백
+                <Typography variant="h6" sx={{ 
+                  color: 'primary.main', 
+                  mb: 2,
+                  fontWeight: 'bold',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1
+                }}>
+                  <span role="img" aria-label="feedback">💡</span> 피드백
                 </Typography>
                 <Typography variant="body1" sx={{ 
                   color: '#fff', 
                   whiteSpace: 'pre-line',
-                  lineHeight: 1.6
+                  lineHeight: 1.8,
+                  fontSize: '1.05rem'
                 }}>
                   {feedback}
                 </Typography>
               </Box>
             )}
 
-            <Box sx={{ display: 'flex', gap: 2 }}>
+            <Box sx={{ 
+              display: 'flex', 
+              gap: 2,
+              justifyContent: 'center'
+            }}>
               {!feedback ? (
                 <Button
                   variant="contained"
@@ -280,10 +336,15 @@ function Learning() {
                   sx={{
                     background: 'linear-gradient(45deg, #00b4d8 30%, #0096c7 90%)',
                     color: 'white',
-                    padding: '10px 20px',
-                    borderRadius: '20px',
+                    padding: '12px 30px',
+                    borderRadius: '25px',
+                    fontSize: '1.1rem',
+                    fontWeight: 'bold',
+                    minWidth: '200px',
                     '&:hover': {
                       background: 'linear-gradient(45deg, #0096c7 30%, #00b4d8 90%)',
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 5px 15px rgba(0, 180, 216, 0.3)',
                     },
                     '&.Mui-disabled': {
                       background: 'rgba(255, 255, 255, 0.12)',
@@ -306,10 +367,15 @@ function Learning() {
                   sx={{
                     background: 'linear-gradient(45deg, #4CAF50 30%, #45a049 90%)',
                     color: 'white',
-                    padding: '10px 20px',
-                    borderRadius: '20px',
+                    padding: '12px 30px',
+                    borderRadius: '25px',
+                    fontSize: '1.1rem',
+                    fontWeight: 'bold',
+                    minWidth: '200px',
                     '&:hover': {
                       background: 'linear-gradient(45deg, #45a049 30%, #4CAF50 90%)',
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 5px 15px rgba(76, 175, 80, 0.3)',
                     },
                     '&.Mui-disabled': {
                       background: 'rgba(255, 255, 255, 0.12)',
@@ -331,11 +397,15 @@ function Learning() {
                 sx={{
                   borderColor: 'rgba(255, 255, 255, 0.23)',
                   color: '#fff',
-                  padding: '10px 20px',
-                  borderRadius: '20px',
+                  padding: '12px 30px',
+                  borderRadius: '25px',
+                  fontSize: '1.1rem',
+                  fontWeight: 'bold',
+                  minWidth: '150px',
                   '&:hover': {
                     borderColor: 'primary.main',
                     backgroundColor: 'rgba(0, 180, 216, 0.1)',
+                    transform: 'translateY(-2px)',
                   },
                 }}
               >
