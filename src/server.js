@@ -290,11 +290,14 @@ async function callGemini(prompt) {
 }
 
 app.post('/api/generate-question', async (req, res) => {
-  const { userId, keyword } = req.body;
-  console.log('문제 생성 요청:', { userId, keyword });
+  const { userId, keyword, difficulty } = req.body;
+  console.log('문제 생성 요청:', { userId, keyword, difficulty });
   
   try {
-    const prompt = `${keyword}에 대한 하나의 문제만 생성해주세요. 질문은 명확하고 구체적이어야 하며, 학습자가 이해하기 쉬워야 하고 문제의 유형은 다양해야합니다.`;
+    const prompt = `${keyword}에 대한 ${difficulty} 난이도의 문제를 하나만 생성해주세요. 
+    ${difficulty} 난이도에 맞는 적절한 수준의 문제를 만들어주세요.
+    반드시 하나의 문제만 생성해주시고, 여러 개의 문제를 생성하지 마세요.
+    질문은 명확하고, 학습자가 이해하기 쉬워야 하고 문제의 유형은 다양해야합니다.`;
     console.log('생성할 프롬프트:', prompt);
     
     const question = await callGemini(prompt);

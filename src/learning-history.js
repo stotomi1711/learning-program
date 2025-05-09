@@ -184,7 +184,6 @@ function LearningHistory() {
               </FormControl>
               <Button
                 variant="contained"
-                onClick={() => navigate('/learning')}
                 sx={{
                   background: 'linear-gradient(45deg, #00b4d8 30%, #0096c7 90%)',
                   color: 'white',

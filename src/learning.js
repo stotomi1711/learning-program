@@ -32,6 +32,7 @@ function Learning() {
   const [userAnswer, setUserAnswer] = useState('');
   const [feedback, setFeedback] = useState('');
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [selectedDifficulty, setSelectedDifficulty] = useState('초급');
   const navigate = useNavigate();
 
   const languages = [
@@ -50,6 +51,12 @@ function Learning() {
     { name: '컴퓨터활용능력2급', color: '#4ECDC4' },
     { name: '정보처리기사', color: '#45B7D1' },
     { name: '직접입력', color: '#68217A' },
+  ];
+
+  const difficulties = [
+    { level: '초급', color: '#4CAF50' },
+    { level: '중급', color: '#FF9800' },
+    { level: '상급', color: '#F44336' }
   ];
 
   const handleLanguageSelect = (language) => {
@@ -83,6 +90,7 @@ function Learning() {
         body: JSON.stringify({
           keyword: selectedItem.name,
           userId: user?.userId || null,
+          difficulty: selectedDifficulty
         }),
       });
 
@@ -219,6 +227,16 @@ function Learning() {
                 label={selectedItem?.name}
                 sx={{
                   backgroundColor: selectedItem?.color,
+                  color: '#fff',
+                  fontWeight: 'bold',
+                  fontSize: '1rem',
+                  padding: '20px 10px'
+                }}
+              />
+              <Chip
+                label={selectedDifficulty}
+                sx={{
+                  backgroundColor: difficulties.find(d => d.level === selectedDifficulty)?.color,
                   color: '#fff',
                   fontWeight: 'bold',
                   fontSize: '1rem',
@@ -736,6 +754,7 @@ function Learning() {
               backdropFilter: 'blur(10px)',
               border: '1px solid rgba(255, 255, 255, 0.1)',
               borderRadius: '16px',
+              minWidth: '400px',
             }
           }}
         >
@@ -746,17 +765,64 @@ function Learning() {
             <Typography variant="body1" color="text.secondary" paragraph>
               {selectedItem?.name}에 대한 학습을 시작하시겠습니까?
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
               선택하신 주제에 대한 맞춤형 학습 콘텐츠가 제공됩니다.
             </Typography>
+
+            <Typography variant="subtitle1" color="primary.main" sx={{ mb: 2 }}>
+              난이도를 선택해주세요
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+              {difficulties.map((difficulty) => (
+                <Button
+                  key={difficulty.level}
+                  variant={selectedDifficulty === difficulty.level ? "contained" : "outlined"}
+                  onClick={() => setSelectedDifficulty(difficulty.level)}
+                  sx={{
+                    flex: 1,
+                    background: selectedDifficulty === difficulty.level 
+                      ? `linear-gradient(45deg, ${difficulty.color} 30%, ${difficulty.color}99 90%)`
+                      : 'transparent',
+                    color: selectedDifficulty === difficulty.level ? '#fff' : difficulty.color,
+                    borderColor: difficulty.color,
+                    padding: '8px 16px',
+                    borderRadius: '20px',
+                    '&:hover': {
+                      background: `linear-gradient(45deg, ${difficulty.color}99 30%, ${difficulty.color} 90%)`,
+                      borderColor: difficulty.color,
+                    }
+                  }}
+                >
+                  {difficulty.level}
+                </Button>
+              ))}
+            </Box>
           </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setShowInfoDialog(false)}>취소</Button>
+          <DialogActions sx={{ p: 2, justifyContent: 'center', gap: 2 }}>
+            <Button 
+              onClick={() => setShowInfoDialog(false)}
+              variant="outlined"
+              sx={{
+                borderColor: 'rgba(255, 255, 255, 0.23)',
+                color: '#fff',
+                padding: '8px 20px',
+                borderRadius: '20px',
+                '&:hover': {
+                  borderColor: 'primary.main',
+                  backgroundColor: 'rgba(0, 180, 216, 0.1)',
+                },
+              }}
+            >
+              취소
+            </Button>
             <Button 
               onClick={handleStartLearning}
               variant="contained"
               sx={{
                 background: `linear-gradient(45deg, ${selectedItem?.color} 30%, ${selectedItem?.color}99 90%)`,
+                color: 'white',
+                padding: '8px 20px',
+                borderRadius: '20px',
                 '&:hover': {
                   background: `linear-gradient(45deg, ${selectedItem?.color}99 30%, ${selectedItem?.color} 90%)`,
                 }
