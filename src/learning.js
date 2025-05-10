@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Container,
@@ -22,7 +22,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 function Learning() {
   const { user } = useUser();
   const location = useLocation();
-  const category = location.state?.category;
+  const { category, lastQuestion } = location.state || {};
   const [selectedItem, setSelectedItem] = useState(null);
   const [showInfoDialog, setShowInfoDialog] = useState(false);
   const [showCustomInputDialog, setShowCustomInputDialog] = useState(false);
@@ -30,9 +30,9 @@ function Learning() {
   const [generatedQuestion, setGeneratedQuestion] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [userAnswer, setUserAnswer] = useState('');
-  const [feedback, setFeedback] = useState('');
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [selectedDifficulty, setSelectedDifficulty] = useState('초급');
+  const [feedback, setFeedback] = useState(null);
   const navigate = useNavigate();
 
   const languages = [
@@ -58,6 +58,15 @@ function Learning() {
     { level: '중급', color: '#FF9800' },
     { level: '상급', color: '#F44336' }
   ];
+
+  useEffect(() => {
+    // 이전 학습 기록이 있는 경우 해당 문제를 표시
+    if (lastQuestion) {
+      setGeneratedQuestion(lastQuestion.question);
+      setSelectedItem({ name: lastQuestion.keyword, color: '#2196F3' });
+      setSelectedDifficulty(lastQuestion.difficulty || '초급');
+    }
+  }, [lastQuestion]);
 
   const handleLanguageSelect = (language) => {
     if (language.name === '직접입력') {
@@ -168,6 +177,7 @@ function Learning() {
         body: JSON.stringify({
           keyword: selectedItem.name,
           userId: user?.userId || null,
+          difficulty: selectedDifficulty
         }),
       });
 
@@ -276,7 +286,7 @@ function Learning() {
               value={userAnswer}
               onChange={(e) => setUserAnswer(e.target.value)}
               placeholder="답변을 입력해주세요"
-              disabled={feedback !== ''}
+              disabled={false}
               sx={{
                 mb: 4,
                 '& .MuiOutlinedInput-root': {

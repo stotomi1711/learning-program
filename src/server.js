@@ -221,16 +221,43 @@ app.delete('/api/profiles/:profileId', async (req, res) => {
 // 프로필 선택 API
 const selectedProfiles = {}; // userId: profileId
 
-app.post('/api/profiles/select', (req, res) => {
+app.post('/api/profiles/select', async (req, res) => {
   const { userId, profileId } = req.body;
 
   if (!userId || !profileId) {
     return res.status(400).json({ error: 'userId 또는 profileId가 누락되었습니다.' });
   }
 
-  selectedProfiles[userId] = profileId;
-  console.log(`✅ ${userId} 사용자가 ${profileId} 프로필을 선택함`);
-  res.json({ message: '프로필이 선택되었습니다.' });
+  try {
+    // 프로필 정보 조회
+    const profile = await Profile.findById(profileId);
+    if (!profile) {
+      return res.status(404).json({ error: '프로필을 찾을 수 없습니다.' });
+    }
+
+    // 해당 프로필의 최근 학습 기록 조회
+    const recentQuestions = await Question.find({ userId, profileId })
+      .sort({ createdAt: -1 })
+      .limit(1);
+
+    selectedProfiles[userId] = profileId;
+    console.log(`✅ ${userId} 사용자가 ${profileId} 프로필을 선택함`);
+
+    res.json({ 
+      message: '프로필이 선택되었습니다.',
+      hasLearningHistory: recentQuestions.length > 0,
+      lastQuestion: recentQuestions[0] ? {
+        question: recentQuestions[0].question,
+        keyword: recentQuestions[0].keyword,
+        difficulty: recentQuestions[0].difficulty,
+        answer: recentQuestions[0].answer,
+        feedback: recentQuestions[0].feedback
+      } : null
+    });
+  } catch (error) {
+    console.error('프로필 선택 중 오류 발생:', error);
+    res.status(500).json({ error: '서버 오류가 발생했습니다.' });
+  }
 });
 
 // 선택된 프로필 확인용 API (선택 사항)

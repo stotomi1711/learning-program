@@ -33,6 +33,7 @@ function ProfileSelect() {
   const [newProfile, setNewProfile] = useState({
     name: '',
     category: '',
+    difficulty: '초급'
   });
 
   const categories = [
@@ -41,13 +42,14 @@ function ProfileSelect() {
   ];
 
   const handleAddProfile = async () => {
-    const { name, category } = newProfile;
+    const { name, category, difficulty } = newProfile;
     const userId = user?.userId;
   
     if (name.trim() && category && userId) {
       const profileData = {
         name: name.trim(),
         category,
+        difficulty,
         userId,
       };
   
@@ -65,7 +67,7 @@ function ProfileSelect() {
         if (response.ok) {
           const savedProfile = await response.json();
           setProfiles(prev => [...prev, savedProfile]);
-          setNewProfile({ name: '', category: '' });
+          setNewProfile({ name: '', category: '', difficulty: '초급' });
           setOpenDialog(false);
         } else {
           const errorText = await response.text();
@@ -276,7 +278,7 @@ function ProfileSelect() {
                   }}
                   onClick={async () => {
                     try {
-                      await fetch('http://localhost:5000/api/profiles/select', {
+                      const response = await fetch('http://localhost:5000/api/profiles/select', {
                         method: 'POST',
                         headers: {
                           'Content-Type': 'application/json',
@@ -286,9 +288,31 @@ function ProfileSelect() {
                           profileId: profile._id,
                         }),
                       });
-                      navigate('/learning', { state: { category: profile.category } });
+
+                      const data = await response.json();
+                      if (response.ok) {
+                        if (data.hasLearningHistory) {
+                          // 학습 기록이 있는 경우 이어서 학습할지 확인
+                          const continueLearning = window.confirm('이전 학습 기록이 있습니다. 이어서 학습하시겠습니까?');
+                          if (continueLearning) {
+                            // 이전 학습 기록으로 이동
+                            navigate('/learning', { 
+                              state: { 
+                                category: profile.category,
+                                lastQuestion: data.lastQuestion 
+                              } 
+                            });
+                            return;
+                          }
+                        }
+                        // 새로운 학습 시작
+                        navigate('/learning', { state: { category: profile.category } });
+                      } else {
+                        alert(data.error || '프로필 선택 중 오류가 발생했습니다.');
+                      }
                     } catch (err) {
                       console.error('선택된 프로필 전송 실패:', err);
+                      alert('프로필 선택 중 오류가 발생했습니다.');
                     }
                   }}
                 >
