@@ -29,6 +29,7 @@ const questionSchema = new mongoose.Schema({
   answer: { type: String, required: true },
   feedback: { type: String, required: true },
   profileId: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now }
 }, { versionKey: false });
 
 const profileSchema = new mongoose.Schema({
@@ -235,10 +236,13 @@ app.post('/api/profiles/select', async (req, res) => {
       return res.status(404).json({ error: '프로필을 찾을 수 없습니다.' });
     }
 
-    // 해당 프로필의 최근 학습 기록 조회
-    const recentQuestions = await Question.find({ userId, profileId })
-      .sort({ createdAt: -1 })
-      .limit(1);
+    // 해당 프로필의 가장 최근 학습 기록 조회
+    const recentQuestions = await Question.find({ 
+      userId, 
+      profileId
+    })
+    .sort({ createdAt: -1 })  // 생성 시간 기준 내림차순 정렬
+    .limit(1);
 
     selectedProfiles[userId] = profileId;
     console.log(`✅ ${userId} 사용자가 ${profileId} 프로필을 선택함`);
@@ -251,7 +255,8 @@ app.post('/api/profiles/select', async (req, res) => {
         keyword: recentQuestions[0].keyword,
         difficulty: recentQuestions[0].difficulty,
         answer: recentQuestions[0].answer,
-        feedback: recentQuestions[0].feedback
+        feedback: recentQuestions[0].feedback,
+        createdAt: recentQuestions[0].createdAt
       } : null
     });
   } catch (error) {
@@ -321,10 +326,22 @@ app.post('/api/generate-question', async (req, res) => {
   console.log('문제 생성 요청:', { userId, keyword, difficulty });
   
   try {
-    const prompt = `${keyword}에 대한 ${difficulty} 난이도의 문제를 하나만 생성해주세요. 
-    ${difficulty} 난이도에 맞는 적절한 수준의 문제를 만들어주세요.
-    반드시 하나의 문제만 생성해주시고, 여러 개의 문제를 생성하지 마세요.
-    질문은 명확하고, 학습자가 이해하기 쉬워야 하고 문제의 유형은 다양해야합니다.`;
+    const prompt = `${keyword}에 대한 ${difficulty}난이도의 주관식 or 객관식 문제를 만들어줘.
+    문제는 주관식과 객관식이 다양하게 번갈아가며 생성되도록 해줘.
+    문제는 하나만 생성해줘.
+    문제는 명확하고 구체적이어야 하며, 학습자가 이해하기 쉽도록 작성해줘. 
+    문제는 지문과 보기를 포함한 깔끔한 형식으로 출력해줘. 
+    문제 형식은 아래와 같이 구성해줘(객관식이면 <보기>, 주관식이면 <보기>없이 문제만 생성해줘):
+
+    문제:
+    (질문 내용)
+    
+    객관식 보기:
+    A. ...
+    B. ...
+    C. ...
+    D. ...
+    `;
     console.log('생성할 프롬프트:', prompt);
     
     const question = await callGemini(prompt);

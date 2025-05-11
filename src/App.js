@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, useNavigate, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import {
   Box,
   Button,
@@ -35,6 +35,7 @@ import Learning from './learning';
 import LearningHistory from './learning-history';
 import MockTest from './mock-test';
 import { UserProvider, useUser } from './contexts/UserContext';
+import Logout from './Logout';
 
 // 커스텀 테마 생성
 const theme = createTheme({
@@ -117,12 +118,10 @@ const theme = createTheme({
 
 function AppContent() {
   const navigate = useNavigate();
-  const { user, logout } = useUser();
-  const [openLogoutDialog, setOpenLogoutDialog] = useState(false);
-  const [openLogoutSuccessDialog, setOpenLogoutSuccessDialog] = useState(false);
+  const { user } = useUser();
   const [openStartDialog, setOpenStartDialog] = useState(false);
   const [openGuestWarningDialog, setOpenGuestWarningDialog] = useState(false);
-  const location = useLocation();
+  const [openLogoutDialog, setOpenLogoutDialog] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
 
@@ -132,18 +131,6 @@ function AppContent() {
 
   const handleClose = () => {
     setAnchorEl(null);
-  };
-
-  const handleLogout = () => {
-    logout();
-    setOpenLogoutDialog(false);
-    setOpenLogoutSuccessDialog(true);
-    handleClose();
-  };
-
-  const handleLogoutSuccessClose = () => {
-    setOpenLogoutSuccessDialog(false);
-    navigate('/');
   };
 
   const handleStartClick = () => {
@@ -266,56 +253,8 @@ function AppContent() {
                   로그아웃
                 </MenuItem>
               </Menu>
-              <Dialog
-                open={openLogoutDialog}
-                onClose={() => setOpenLogoutDialog(false)}
-                PaperProps={{
-                  sx: {
-                    background: 'rgba(17, 24, 39, 0.8)',
-                    backdropFilter: 'blur(10px)',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                  }
-                }}
-              >
-                <DialogTitle sx={{ color: '#00b4d8' }}>
-                  로그아웃
-                </DialogTitle>
-                <DialogContent>
-                  <Typography>
-                    정말 로그아웃 하시겠습니까?
-                  </Typography>
-                </DialogContent>
-                <DialogActions sx={{ justifyContent: 'center', gap: 2, pb: 2 }}>
-                  <Button
-                    onClick={handleLogout}
-                    variant="contained"
-                    sx={{
-                      background: 'linear-gradient(45deg, #00b4d8 30%, #0096c7 90%)',
-                      '&:hover': {
-                        background: 'linear-gradient(45deg, #0096c7 30%, #00b4d8 90%)',
-                      }
-                    }}
-                  >
-                    로그아웃
-                  </Button>
-                  <Button
-                    onClick={() => setOpenLogoutDialog(false)}
-                    variant="outlined"
-                    sx={{
-                      color: '#00b4d8',
-                      borderColor: '#00b4d8',
-                      '&:hover': {
-                        borderColor: '#00b4d8',
-                        backgroundColor: 'rgba(0, 180, 216, 0.1)',
-                      }
-                    }}
-                  >
-                    취소
-                  </Button>
-                </DialogActions>
-              </Dialog>
             </>
-          ) : location.pathname !== '/login' && (
+          ) : (
             <Button
               color="inherit"
               onClick={() => navigate('/login')}
@@ -331,6 +270,12 @@ function AppContent() {
           )}
         </Toolbar>
       </AppBar>
+
+      {/* 로그아웃 컴포넌트 */}
+      <Logout 
+        open={openLogoutDialog}
+        onClose={() => setOpenLogoutDialog(false)}
+      />
 
       {/* 우주 배경 */}
       <div className="space-background">
@@ -671,41 +616,6 @@ function AppContent() {
                   }}
                 >
                   로그인하러 가기
-                </Button>
-              </DialogActions>
-            </Dialog>
-
-            {/* 로그아웃 성공 다이얼로그 */}
-            <Dialog
-              open={openLogoutSuccessDialog}
-              onClose={handleLogoutSuccessClose}
-              PaperProps={{
-                sx: {
-                  background: 'rgba(17, 24, 39, 0.8)',
-                  backdropFilter: 'blur(10px)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                }
-              }}
-            >
-              <DialogTitle sx={{ color: '#00b4d8' }}>
-                로그아웃 완료
-              </DialogTitle>
-              <DialogContent>
-                <Typography>
-                  로그아웃이 성공적으로 완료되었습니다.
-                </Typography>
-              </DialogContent>
-              <DialogActions>
-                <Button 
-                  onClick={handleLogoutSuccessClose}
-                  sx={{
-                    color: '#00b4d8',
-                    '&:hover': {
-                      backgroundColor: 'rgba(0, 180, 216, 0.1)',
-                    }
-                  }}
-                >
-                  확인
                 </Button>
               </DialogActions>
             </Dialog>

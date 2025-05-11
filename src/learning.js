@@ -65,6 +65,19 @@ function Learning() {
       setGeneratedQuestion(lastQuestion.question);
       setSelectedItem({ name: lastQuestion.keyword, color: '#2196F3' });
       setSelectedDifficulty(lastQuestion.difficulty || '초급');
+      
+      // 답변과 피드백이 있는 경우에만 설정
+      if (lastQuestion.answer && lastQuestion.answer !== "답변을 기다리는 중입니다.") {
+        setUserAnswer(lastQuestion.answer);
+      } else {
+        setUserAnswer(''); // 답변하지 않은 경우 빈 문자열로 설정
+      }
+      
+      if (lastQuestion.feedback && lastQuestion.feedback !== "피드백을 기다리는 중입니다.") {
+        setFeedback(lastQuestion.feedback);
+      } else {
+        setFeedback(null); // 피드백이 없는 경우 null로 설정
+      }
     }
   }, [lastQuestion]);
 
@@ -286,7 +299,7 @@ function Learning() {
               value={userAnswer}
               onChange={(e) => setUserAnswer(e.target.value)}
               placeholder="답변을 입력해주세요"
-              disabled={false}
+              disabled={!!feedback}
               sx={{
                 mb: 4,
                 '& .MuiOutlinedInput-root': {
