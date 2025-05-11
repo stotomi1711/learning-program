@@ -30,6 +30,9 @@ function ProfileSelect() {
   const navigate = useNavigate();
   const [profiles, setProfiles] = useState([]);
   const [openDialog, setOpenDialog] = useState(false);
+  const [openContinueDialog, setOpenContinueDialog] = useState(false);
+  const [selectedProfile, setSelectedProfile] = useState(null);
+  const [lastQuestion, setLastQuestion] = useState(null);
   const [newProfile, setNewProfile] = useState({
     name: '',
     category: '',
@@ -177,6 +180,11 @@ function ProfileSelect() {
             color: '#fff',
             fontWeight: 'bold',
             textShadow: '0 0 20px rgba(0,0,0,0.3)',
+            background: 'linear-gradient(45deg, #00b4d8, #0096c7)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            letterSpacing: '-0.02em',
+            mb: 2,
           }}
         >
           학습 프로필
@@ -186,9 +194,12 @@ function ProfileSelect() {
           sx={{
             color: 'rgba(255,255,255,0.8)',
             mb: 4,
+            fontStyle: 'italic',
+            letterSpacing: '0.02em',
+            textShadow: '0 2px 4px rgba(0,0,0,0.2)',
           }}
         >
-          나만의 학습 프로필을 만들어보세요
+          나만의 학습 프로필을 만들어보세요 ✨
         </Typography>
       </Box>
 
@@ -213,9 +224,12 @@ function ProfileSelect() {
               color: 'rgba(255,255,255,0.8)',
               mb: 2,
               textAlign: 'center',
+              fontStyle: 'italic',
+              letterSpacing: '0.02em',
+              textShadow: '0 2px 4px rgba(0,0,0,0.2)',
             }}
           >
-            아직 생성된 프로필이 없습니다
+            아직 생성된 프로필이 없습니다 🌟
           </Typography>
           <Button
             variant="contained"
@@ -292,18 +306,10 @@ function ProfileSelect() {
                       const data = await response.json();
                       if (response.ok) {
                         if (data.hasLearningHistory) {
-                          // 학습 기록이 있는 경우 이어서 학습할지 확인
-                          const continueLearning = window.confirm('이전 학습 기록이 있습니다. 이어서 학습하시겠습니까?');
-                          if (continueLearning) {
-                            // 이전 학습 기록으로 이동
-                            navigate('/learning', { 
-                              state: { 
-                                category: profile.category,
-                                lastQuestion: data.lastQuestion 
-                              } 
-                            });
-                            return;
-                          }
+                          setSelectedProfile(profile);
+                          setLastQuestion(data.lastQuestion);
+                          setOpenContinueDialog(true);
+                          return;
                         }
                         // 새로운 학습 시작
                         navigate('/learning', { state: { category: profile.category } });
@@ -340,6 +346,10 @@ function ProfileSelect() {
                       fontWeight: 'bold',
                       textShadow: '0 0 10px rgba(0,0,0,0.3)',
                       mb: 2,
+                      letterSpacing: '-0.01em',
+                      background: 'linear-gradient(45deg, #fff, rgba(255,255,255,0.8))',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
                     }}
                   >
                     {profile.name}
@@ -363,6 +373,8 @@ function ProfileSelect() {
                       color: 'rgba(255,255,255,0.7)',
                       fontStyle: 'italic',
                       mt: 1,
+                      letterSpacing: '0.02em',
+                      textShadow: '0 1px 2px rgba(0,0,0,0.1)',
                     }}
                   >
                     {profile.category}
@@ -396,8 +408,12 @@ function ProfileSelect() {
               <CardContent>
                 <Box sx={{ textAlign: 'center' }}>
                   <AddIcon sx={{ fontSize: 40, color: '#fff', mb: 1 }} />
-                  <Typography variant="h6" sx={{ color: '#fff' }}>
-                    새 프로필 추가
+                  <Typography variant="h6" sx={{ 
+                    color: '#fff',
+                    letterSpacing: '0.02em',
+                    textShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                  }}>
+                    새 프로필 추가 ✨
                   </Typography>
                 </Box>
               </CardContent>
@@ -417,7 +433,15 @@ function ProfileSelect() {
           },
         }}
       >
-        <DialogTitle sx={{ color: '#fff' }}>새 프로필 만들기</DialogTitle>
+        <DialogTitle sx={{ 
+          color: '#fff',
+          fontSize: '1.5rem',
+          fontWeight: 'bold',
+          letterSpacing: '-0.01em',
+          textShadow: '0 2px 4px rgba(0,0,0,0.2)',
+        }}>
+          새 프로필 만들기 ✨
+        </DialogTitle>
         <DialogContent>
           <TextField
             margin="dense"
@@ -492,6 +516,77 @@ function ProfileSelect() {
             }}
           >
             만들기
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={openContinueDialog}
+        onClose={() => setOpenContinueDialog(false)}
+        PaperProps={{
+          sx: {
+            background: 'rgba(17, 24, 39, 0.8)',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+          },
+        }}
+      >
+        <DialogTitle sx={{ 
+          color: 'primary.main',
+          fontSize: '1.5rem',
+          fontWeight: 'bold',
+          letterSpacing: '-0.01em',
+          textShadow: '0 2px 4px rgba(0,0,0,0.2)',
+        }}>
+          이전 학습 기록 📚
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{
+            fontSize: '1.1rem',
+            color: 'rgba(255,255,255,0.9)',
+            letterSpacing: '0.02em',
+            lineHeight: 1.6,
+          }}>
+            이전 학습 기록이 있습니다. 이어서 학습하시겠습니까? ✨
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'center', gap: 2, pb: 2 }}>
+          <Button
+            onClick={() => {
+              setOpenContinueDialog(false);
+              navigate('/learning', { 
+                state: { 
+                  category: selectedProfile.category,
+                  lastQuestion: lastQuestion 
+                } 
+              });
+            }}
+            variant="contained"
+            sx={{
+              background: 'linear-gradient(45deg, #00b4d8 30%, #0096c7 90%)',
+              '&:hover': {
+                background: 'linear-gradient(45deg, #0096c7 30%, #00b4d8 90%)',
+              },
+            }}
+          >
+            이어서 학습하기
+          </Button>
+          <Button
+            onClick={() => {
+              setOpenContinueDialog(false);
+              navigate('/learning', { state: { category: selectedProfile.category } });
+            }}
+            variant="outlined"
+            sx={{
+              color: 'primary.main',
+              borderColor: 'primary.main',
+              '&:hover': {
+                borderColor: 'primary.main',
+                backgroundColor: 'rgba(0, 180, 216, 0.1)',
+              },
+            }}
+          >
+            새로 시작하기
           </Button>
         </DialogActions>
       </Dialog>

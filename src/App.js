@@ -21,12 +21,10 @@ import {
   MenuItem,
 } from '@mui/material';
 import {
-  School,
-  Psychology,
-  LiveHelp,
   Timeline,
   Home,
   KeyboardArrowDown,
+  School,
 } from '@mui/icons-material';
 import CssBaseline from '@mui/material/CssBaseline';
 import './App.css';
@@ -35,6 +33,7 @@ import Register from './Register';
 import ProfileSelect from './ProfileSelect';
 import Learning from './learning';
 import LearningHistory from './learning-history';
+import MockTest from './mock-test';
 import { UserProvider, useUser } from './contexts/UserContext';
 
 // 커스텀 테마 생성
@@ -57,15 +56,42 @@ const theme = createTheme({
     },
   },
   typography: {
-    fontFamily: '"Pretendard", "Roboto", "Helvetica", "Arial", sans-serif',
+    fontFamily: '"Pretendard", -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif',
     h1: {
       fontWeight: 700,
+      letterSpacing: '-0.02em',
     },
     h2: {
       fontWeight: 700,
+      letterSpacing: '-0.02em',
+    },
+    h3: {
+      fontWeight: 700,
+      letterSpacing: '-0.02em',
+    },
+    h4: {
+      fontWeight: 600,
+      letterSpacing: '-0.01em',
     },
     h5: {
       fontWeight: 500,
+      letterSpacing: '-0.01em',
+    },
+    h6: {
+      fontWeight: 500,
+      letterSpacing: '-0.01em',
+    },
+    body1: {
+      letterSpacing: '0.01em',
+      lineHeight: 1.7,
+    },
+    body2: {
+      letterSpacing: '0.01em',
+      lineHeight: 1.6,
+    },
+    button: {
+      fontWeight: 500,
+      letterSpacing: '0.02em',
     },
   },
   components: {
@@ -74,6 +100,7 @@ const theme = createTheme({
         root: {
           textTransform: 'none',
           borderRadius: '12px',
+          fontWeight: 500,
         },
       },
     },
@@ -334,20 +361,56 @@ function AppContent() {
               }}
             >
               <Container maxWidth="sm" sx={{ position: 'relative', zIndex: 1 }}>
-                <Typography
-                  component="h1"
-                  variant="h2"
-                  align="center"
-                  color="primary.main"
-                  gutterBottom
-                  sx={{ 
-                    fontWeight: 'bold',
-                    textShadow: '0 0 20px rgba(0, 180, 216, 0.5)',
-                    letterSpacing: '-0.02em',
+                <Box
+                  sx={{
+                    position: 'relative',
+                    mb: 6,
+                    '&::before': {
+                      content: '""',
+                      position: 'absolute',
+                      top: '-20px',
+                      left: '-20px',
+                      right: '-20px',
+                      bottom: '-20px',
+                      background: 'radial-gradient(circle at center, rgba(0, 180, 216, 0.1) 0%, transparent 70%)',
+                      borderRadius: '30px',
+                      zIndex: -1,
+                    }
                   }}
                 >
-                  AI와 함께 성장하는 학습
-                </Typography>
+                  <Typography
+                    component="h1"
+                    variant="h2"
+                    align="center"
+                    color="primary.main"
+                    gutterBottom
+                    sx={{ 
+                      fontWeight: 'bold',
+                      textShadow: '0 0 20px rgba(0, 180, 216, 0.5)',
+                      letterSpacing: '-0.02em',
+                      mb: 3,
+                      background: 'linear-gradient(45deg, #00b4d8, #0096c7)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      fontSize: { xs: '2.5rem', md: '3.5rem' },
+                      position: 'relative',
+                      '&::after': {
+                        content: '""',
+                        position: 'absolute',
+                        bottom: '-10px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        width: '100px',
+                        height: '4px',
+                        background: 'linear-gradient(90deg, transparent, #00b4d8, transparent)',
+                        borderRadius: '2px',
+                      }
+                    }}
+                  >
+                    AI와 함께하는<br />
+                    새로운 학습의 시작 ✨
+                  </Typography>
+                </Box>
                 <Typography 
                   variant="h5" 
                   align="center" 
@@ -357,12 +420,101 @@ function AppContent() {
                     lineHeight: 1.8,
                     textShadow: '0 0 10px rgba(255, 255, 255, 0.1)',
                     letterSpacing: '0.02em',
+                    maxWidth: '800px',
+                    mx: 'auto',
+                    mb: 4,
+                    fontSize: { xs: '1.1rem', md: '1.3rem' },
+                    position: 'relative',
+                    '&::before': {
+                      content: '""',
+                      position: 'absolute',
+                      top: '-20px',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      width: '60px',
+                      height: '60px',
+                      background: 'radial-gradient(circle at center, rgba(0, 180, 216, 0.2) 0%, transparent 70%)',
+                      borderRadius: '50%',
+                      zIndex: -1,
+                    }
                   }}
                 >
-                  최신 AI 기술을 활용한 맞춤형 학습 경험을 제공합니다.
-                  개인화된 학습 경로와 실시간 피드백으로 효율적인 학습을 도와드립니다.
+                  <Box component="span" sx={{ 
+                    color: 'primary.main', 
+                    fontWeight: 'bold',
+                    textShadow: '0 0 10px rgba(0, 180, 216, 0.3)',
+                    position: 'relative',
+                    '&::after': {
+                      content: '""',
+                      position: 'absolute',
+                      bottom: '-2px',
+                      left: 0,
+                      width: '100%',
+                      height: '2px',
+                      background: 'linear-gradient(90deg, transparent, #00b4d8, transparent)',
+                    }
+                  }}>
+                    AI 기술
+                  </Box>
+                  을 활용한 맞춤형 학습 경험으로
+                  <br />
+                  <Box component="span" sx={{ 
+                    color: 'primary.main', 
+                    fontWeight: 'bold',
+                    textShadow: '0 0 10px rgba(0, 180, 216, 0.3)',
+                    position: 'relative',
+                    '&::after': {
+                      content: '""',
+                      position: 'absolute',
+                      bottom: '-2px',
+                      left: 0,
+                      width: '100%',
+                      height: '2px',
+                      background: 'linear-gradient(90deg, transparent, #00b4d8, transparent)',
+                    }
+                  }}>
+                    개인화된 학습
+                  </Box>
+                  과
+                  <Box component="span" sx={{ 
+                    color: 'primary.main', 
+                    fontWeight: 'bold',
+                    textShadow: '0 0 10px rgba(0, 180, 216, 0.3)',
+                    position: 'relative',
+                    '&::after': {
+                      content: '""',
+                      position: 'absolute',
+                      bottom: '-2px',
+                      left: 0,
+                      width: '100%',
+                      height: '2px',
+                      background: 'linear-gradient(90deg, transparent, #00b4d8, transparent)',
+                    }
+                  }}>
+                    실시간 평가
+                  </Box>
+                  로
+                  <br />
+                  더 효율적이고 효과적인 학습을 경험하세요 🌟
                 </Typography>
-                <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
+                <Box sx={{ 
+                  mt: 4, 
+                  display: 'flex', 
+                  justifyContent: 'center',
+                  position: 'relative',
+                  '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    top: '-30px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    width: '200px',
+                    height: '200px',
+                    background: 'radial-gradient(circle at center, rgba(0, 180, 216, 0.1) 0%, transparent 70%)',
+                    borderRadius: '50%',
+                    zIndex: -1,
+                  }
+                }}>
                   <Button 
                     variant="contained" 
                     size="large"
@@ -373,11 +525,26 @@ function AppContent() {
                       borderRadius: '12px',
                       background: 'linear-gradient(45deg, #00b4d8 30%, #0096c7 90%)',
                       boxShadow: '0 4px 20px rgba(0, 180, 216, 0.3)',
+                      position: 'relative',
+                      overflow: 'hidden',
+                      '&::before': {
+                        content: '""',
+                        position: 'absolute',
+                        top: 0,
+                        left: '-100%',
+                        width: '100%',
+                        height: '100%',
+                        background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent)',
+                        transition: '0.5s',
+                      },
                       '&:hover': {
                         background: 'linear-gradient(45deg, #0096c7 30%, #00b4d8 90%)',
                         transform: 'translateY(-2px)',
                         boxShadow: '0 6px 25px rgba(0, 180, 216, 0.4)',
                         transition: 'all 0.3s ease',
+                        '&::before': {
+                          left: '100%',
+                        }
                       }
                     }}
                   >
@@ -548,24 +715,14 @@ function AppContent() {
               <Grid container spacing={4}>
                 {[
                   {
-                    icon: <Psychology sx={{ fontSize: 40, color: 'primary.main' }} />,
-                    title: 'AI 기반 학습 분석',
-                    description: '개인의 학습 패턴을 분석하여 최적화된 학습 경로를 제시합니다.'
+                    icon: <Timeline sx={{ fontSize: 40, color: 'primary.main' }} />,
+                    title: '학습 기록 관리',
+                    description: '학습한 내용을 관리하고 해답과 해설을 보실 수 있습니다.'
                   },
                   {
                     icon: <School sx={{ fontSize: 40, color: 'primary.main' }} />,
-                    title: '분야별 문제 제공',
-                    description: '수준과 난이도를 선택하여 개인화된 학습 문제를 제공합니다.'
-                  },
-                  {
-                    icon: <LiveHelp sx={{ fontSize: 40, color: 'primary.main' }} />,
-                    title: '실시간 도움',
-                    description: 'AI 챗봇을 통한 학습 문제에 대한 힌트를 제공합니다.'
-                  },
-                  {
-                    icon: <Timeline sx={{ fontSize: 40, color: 'primary.main' }} />,
-                    title: '학습 기록 관리',
-                    description: '학습한 내용 관리와 피드백 및 해설로 효율적인 학습을 지원합니다.'
+                    title: '모의 테스트',
+                    description: '실제 시험처럼 실력을 테스트하고 결과를 확인할 수 있습니다.'
                   }
                 ].map((feature, index) => (
                   <Grid item xs={12} sm={6} key={index}>
@@ -573,6 +730,8 @@ function AppContent() {
                       onClick={() => {
                         if (feature.title === '학습 기록 관리') {
                           navigate('/learning-history');
+                        } else if (feature.title === '모의 테스트') {
+                          navigate('/mock-test');
                         }
                       }}
                       sx={{ 
@@ -583,22 +742,72 @@ function AppContent() {
                         backdropFilter: 'blur(10px)',
                         transition: 'all 0.3s ease',
                         border: '1px solid rgba(255, 255, 255, 0.1)',
-                        cursor: feature.title === '학습 기록 관리' ? 'pointer' : 'default',
+                        cursor: 'pointer',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        '&::before': {
+                          content: '""',
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: '100%',
+                          height: '100%',
+                          background: 'radial-gradient(circle at center, rgba(0, 180, 216, 0.1) 0%, transparent 70%)',
+                          opacity: 0,
+                          transition: 'opacity 0.3s ease',
+                        },
                         '&:hover': {
                           transform: 'translateY(-5px)',
                           boxShadow: '0 10px 30px rgba(0, 180, 216, 0.2)',
                           borderColor: 'rgba(0, 180, 216, 0.3)',
+                          '&::before': {
+                            opacity: 1,
+                          }
                         }
                       }}
                     >
                       <CardContent>
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                        <Box sx={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          mb: 2,
+                          position: 'relative',
+                          '&::after': {
+                            content: '""',
+                            position: 'absolute',
+                            bottom: '-10px',
+                            left: 0,
+                            width: '100%',
+                            height: '2px',
+                            background: 'linear-gradient(90deg, transparent, rgba(0, 180, 216, 0.3), transparent)',
+                          }
+                        }}>
                           {feature.icon}
-                          <Typography variant="h5" component="div" sx={{ ml: 2, fontWeight: 'bold' }}>
+                          <Typography variant="h5" component="div" sx={{ 
+                            ml: 2, 
+                            fontWeight: 'bold',
+                            background: 'linear-gradient(45deg, #00b4d8, #0096c7)',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                          }}>
                             {feature.title}
                           </Typography>
                         </Box>
-                        <Typography variant="body1" color="text.secondary">
+                        <Typography variant="body1" color="text.secondary" sx={{
+                          position: 'relative',
+                          '&::before': {
+                            content: '""',
+                            position: 'absolute',
+                            top: '-10px',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            width: '40px',
+                            height: '40px',
+                            background: 'radial-gradient(circle at center, rgba(0, 180, 216, 0.1) 0%, transparent 70%)',
+                            borderRadius: '50%',
+                            zIndex: -1,
+                          }
+                        }}>
                           {feature.description}
                         </Typography>
                       </CardContent>
@@ -607,29 +816,6 @@ function AppContent() {
                 ))}
               </Grid>
             </Container>
-
-            {/* 푸터 */}
-            <Box 
-              sx={{ 
-                bgcolor: 'rgba(15, 23, 42, 0.9)',
-                p: 6,
-                position: 'relative',
-                '&::before': {
-                  content: '""',
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  height: '1px',
-                  background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent)',
-                }
-              }} 
-              component="footer"
-            >
-              <Typography variant="body2" color="text.secondary" align="center">
-                © 2024 AI 학습 플랫폼. All rights reserved.
-              </Typography>
-            </Box>
           </Box>
         } />
         <Route path="/login" element={<Login />} />
@@ -637,6 +823,7 @@ function AppContent() {
         <Route path="/profile-select" element={<ProfileSelect />} />
         <Route path="/learning" element={<Learning />} />
         <Route path="/learning-history" element={<LearningHistory />} />
+        <Route path="/mock-test" element={<MockTest />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Box>

@@ -300,7 +300,7 @@ function Learning() {
                     borderColor: 'primary.main',
                   },
                   '&.Mui-focused fieldset': {
-                    borderColor: 'primary.main',
+                    borderColor: 'primary.main',  
                   },
                   '&.Mui-disabled': {
                     background: 'rgba(0, 0, 0, 0.3)',
