@@ -15,7 +15,7 @@ import {
   FormControl,
   InputLabel,
 } from '@mui/material';
-import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
+import { ArrowBack as ArrowBackIcon, School as SchoolIcon, Timeline as TimelineIcon } from '@mui/icons-material';
 import { useUser } from './contexts/UserContext';
 
 const API_URL = 'http://localhost:5000/api';
@@ -23,16 +23,17 @@ const API_URL = 'http://localhost:5000/api';
 function LearningHistory() {
   const navigate = useNavigate();
   const [learningHistory, setLearningHistory] = useState([]);
+  const [testHistory, setTestHistory] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedProfile, setSelectedProfile] = useState('');
   const [profiles, setProfiles] = useState([]);
+  const [selectedMode, setSelectedMode] = useState(null); // null, 'learning', 'test'
   const { user } = useUser();
 
   const fetchLearningHistory = useCallback(async (profileId) => {
     if (!user?.userId) return;
     
-    console.log('Fetching learning history for profileId:', profileId);
     setIsLoading(true);
     try {
       const response = await fetch(`${API_URL}/learning-history?userId=${user.userId}&profileId=${profileId}`);
@@ -44,6 +45,25 @@ function LearningHistory() {
     } catch (error) {
       console.error(error);
       setError("학습 기록 조회 중 오류가 발생했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user]);
+
+  const fetchTestHistory = useCallback(async (profileId) => {
+    if (!user?.userId) return;
+    
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/test-history?userId=${user.userId}&profileId=${profileId}`);
+      if (!response.ok) {
+        throw new Error('테스트 기록을 불러오는데 실패했습니다.');
+      }
+      const data = await response.json();
+      setTestHistory(data);
+    } catch (error) {
+      console.error(error);
+      setError("테스트 기록 조회 중 오류가 발생했습니다.");
     } finally {
       setIsLoading(false);
     }
@@ -61,12 +81,11 @@ function LearningHistory() {
       setProfiles(data);
       if (data.length > 0) {
         setSelectedProfile(data[0]._id);
-        fetchLearningHistory(data[0]._id);
       }
     } catch (error) {
       console.error('프로필 목록 조회 중 오류:', error);
     }
-  }, [user, fetchLearningHistory]);
+  }, [user]);
 
   useEffect(() => {
     if (user?.userId) {
@@ -78,8 +97,23 @@ function LearningHistory() {
 
   const handleProfileChange = useCallback((profileId) => {
     setSelectedProfile(profileId);
-    fetchLearningHistory(profileId);
-  }, [fetchLearningHistory]);
+    if (selectedMode === 'learning') {
+      fetchLearningHistory(profileId);
+    } else if (selectedMode === 'test') {
+      fetchTestHistory(profileId);
+    }
+  }, [selectedMode, fetchLearningHistory, fetchTestHistory]);
+
+  const handleModeSelect = (mode) => {
+    setSelectedMode(mode);
+    if (selectedProfile) {
+      if (mode === 'learning') {
+        fetchLearningHistory(selectedProfile);
+      } else if (mode === 'test') {
+        fetchTestHistory(selectedProfile);
+      }
+    }
+  };
 
   const getSubjectColor = (subject) => {
     const colors = {
@@ -95,6 +129,77 @@ function LearningHistory() {
     };
     return colors[subject] || '#2196F3';
   };
+
+  const renderModeSelection = () => (
+    <Box sx={{ mt: 4 }}>
+      <Typography
+        variant="h5"
+        sx={{
+          color: '#fff',
+          textAlign: 'center',
+          mb: 4,
+        }}
+      >
+        어떤 기록을 확인하시겠습니까?
+      </Typography>
+      <Grid container spacing={4} justifyContent="center">
+        <Grid item xs={12} sm={6} md={4}>
+          <Card
+            onClick={() => handleModeSelect('learning')}
+            sx={{
+              background: 'rgba(255, 255, 255, 0.1)',
+              backdropFilter: 'blur(10px)',
+              borderRadius: '20px',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                transform: 'translateY(-5px)',
+                boxShadow: '0 12px 40px 0 rgba(31, 38, 135, 0.5)',
+                background: 'rgba(255, 255, 255, 0.15)',
+              },
+            }}
+          >
+            <CardContent sx={{ textAlign: 'center', p: 4 }}>
+              <TimelineIcon sx={{ fontSize: 60, color: '#00b4d8', mb: 2 }} />
+              <Typography variant="h5" sx={{ color: '#fff', mb: 2 }}>
+                학습 기록
+              </Typography>
+              <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.7)' }}>
+                학습한 내용과 피드백을 확인하세요
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} sm={6} md={4}>
+          <Card
+            onClick={() => handleModeSelect('test')}
+            sx={{
+              background: 'rgba(255, 255, 255, 0.1)',
+              backdropFilter: 'blur(10px)',
+              borderRadius: '20px',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                transform: 'translateY(-5px)',
+                boxShadow: '0 12px 40px 0 rgba(31, 38, 135, 0.5)',
+                background: 'rgba(255, 255, 255, 0.15)',
+              },
+            }}
+          >
+            <CardContent sx={{ textAlign: 'center', p: 4 }}>
+              <SchoolIcon sx={{ fontSize: 60, color: '#00b4d8', mb: 2 }} />
+              <Typography variant="h5" sx={{ color: '#fff', mb: 2 }}>
+                테스트 기록
+              </Typography>
+              <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.7)' }}>
+                테스트 결과와 피드백을 확인하세요
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+    </Box>
+  );
 
   return (
     <Container maxWidth="lg" sx={{ mt: 8 }}>
@@ -163,6 +268,8 @@ function LearningHistory() {
             로그인하기
           </Button>
         </Box>
+      ) : !selectedMode ? (
+        renderModeSelection()
       ) : (
         <>
           {!isLoading && !error && profiles.length > 0 && (
@@ -183,18 +290,18 @@ function LearningHistory() {
                 </Select>
               </FormControl>
               <Button
-                variant="contained"
+                variant="outlined"
+                onClick={() => setSelectedMode(null)}
                 sx={{
-                  background: 'linear-gradient(45deg, #00b4d8 30%, #0096c7 90%)',
-                  color: 'white',
-                  padding: '10px 20px',
-                  borderRadius: '20px',
+                  color: '#fff',
+                  borderColor: 'rgba(255,255,255,0.5)',
                   '&:hover': {
-                    background: 'linear-gradient(45deg, #0096c7 30%, #00b4d8 90%)',
-                  }
+                    borderColor: '#fff',
+                    backgroundColor: 'rgba(255,255,255,0.1)',
+                  },
                 }}
               >
-                이어서 학습하기
+                기록 종류 변경
               </Button>
             </Box>
           )}
@@ -229,121 +336,240 @@ function LearningHistory() {
                 {error}
               </Typography>
             </Box>
-          ) : !learningHistory || learningHistory.length === 0 ? (
-            <Box
-              sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                minHeight: '200px',
-                background: 'rgba(255, 255, 255, 0.1)',
-                backdropFilter: 'blur(10px)',
-                borderRadius: '20px',
-                p: 4,
-                mb: 4,
-              }}
-            >
-              <Typography
-                variant="h6"
+          ) : selectedMode === 'learning' ? (
+            !learningHistory || learningHistory.length === 0 ? (
+              <Box
                 sx={{
-                  color: 'rgba(255,255,255,0.8)',
-                  mb: 2,
-                  textAlign: 'center',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minHeight: '200px',
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  backdropFilter: 'blur(10px)',
+                  borderRadius: '20px',
+                  p: 4,
+                  mb: 4,
                 }}
               >
-                선택한 프로필의 학습 기록이 없습니다
-              </Typography>
-            </Box>
-          ) : (
-            <Grid container spacing={3}>
-              {learningHistory.map((record) => {
-                const profile = profiles.find(p => p._id === record.profileId);
-                return (
-                  <Grid item xs={12} key={record._id || record.id || Math.random()}>
-                    <Card
-                      sx={{
-                        background: 'rgba(255, 255, 255, 0.1)',
-                        backdropFilter: 'blur(10px)',
-                        borderRadius: '20px',
-                        boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
-                        border: '1px solid rgba(255, 255, 255, 0.18)',
-                        transition: 'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out',
-                        '&:hover': {
-                          transform: 'translateY(-5px)',
-                          boxShadow: '0 12px 40px 0 rgba(31, 38, 135, 0.5)',
-                        },
-                      }}
-                    >
-                      <CardContent>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography
+                  variant="h6"
+                  sx={{
+                    color: 'rgba(255,255,255,0.8)',
+                    mb: 2,
+                    textAlign: 'center',
+                  }}
+                >
+                  선택한 프로필의 학습 기록이 없습니다
+                </Typography>
+              </Box>
+            ) : (
+              <Grid container spacing={3}>
+                {learningHistory.map((record) => {
+                  const profile = profiles.find(p => p._id === record.profileId);
+                  return (
+                    <Grid item xs={12} key={record._id || record.id || Math.random()}>
+                      <Card
+                        sx={{
+                          background: 'rgba(255, 255, 255, 0.1)',
+                          backdropFilter: 'blur(10px)',
+                          borderRadius: '20px',
+                          boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+                          border: '1px solid rgba(255, 255, 255, 0.18)',
+                          transition: 'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out',
+                          '&:hover': {
+                            transform: 'translateY(-5px)',
+                            boxShadow: '0 12px 40px 0 rgba(31, 38, 135, 0.5)',
+                          },
+                        }}
+                      >
+                        <CardContent>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                            <Typography
+                              variant="h6"
+                              sx={{
+                                color: '#fff',
+                                fontWeight: 'bold',
+                              }}
+                            >
+                              {record.createdAt ? new Date(record.createdAt).toLocaleDateString() : '날짜 없음'}
+                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 1 }}>
+                              <Chip
+                                label={profile ? profile.name : '기본 프로필'}
+                                sx={{
+                                  backgroundColor: profile ? profile.color || '#4CAF50' : '#4CAF50',
+                                  color: '#fff',
+                                  fontWeight: 'bold',
+                                }}
+                              />
+                              <Chip
+                                label={record.keyword || '주제 없음'}
+                                sx={{
+                                  backgroundColor: getSubjectColor(record.keyword),
+                                  color: '#fff',
+                                  fontWeight: 'bold',
+                                }}
+                              />
+                            </Box>
+                          </Box>
                           <Typography
-                            variant="h6"
+                            variant="h5"
                             sx={{
                               color: '#fff',
                               fontWeight: 'bold',
+                              mb: 2,
                             }}
                           >
-                            {record.createdAt ? new Date(record.createdAt).toLocaleDateString() : '날짜 없음'}
+                            {record.question || '질문 없음'}
                           </Typography>
-                          <Box sx={{ display: 'flex', gap: 1 }}>
-                            <Chip
-                              label={profile ? profile.name : '기본 프로필'}
-                              sx={{
-                                backgroundColor: profile ? profile.color || '#4CAF50' : '#4CAF50',
-                                color: '#fff',
-                                fontWeight: 'bold',
-                              }}
-                            />
-                            <Chip
-                              label={record.keyword || '주제 없음'}
-                              sx={{
-                                backgroundColor: getSubjectColor(record.keyword),
-                                color: '#fff',
-                                fontWeight: 'bold',
-                              }}
-                            />
-                          </Box>
-                        </Box>
-                        <Typography
-                          variant="h5"
-                          sx={{
-                            color: '#fff',
-                            fontWeight: 'bold',
-                            mb: 2,
-                          }}
-                        >
-                          {record.question || '질문 없음'}
-                        </Typography>
-                        <Typography
-                          variant="body1"
-                          sx={{
-                            color: 'rgba(255,255,255,0.7)',
-                            whiteSpace: 'pre-line',
-                            mb: 2,
-                          }}
-                        >
-                          {record.answer || '답변 없음'}
-                        </Typography>
-                        {record.feedback && (
-                          <Box sx={{ mt: 2, p: 2, background: 'rgba(0, 180, 216, 0.1)', borderRadius: '8px' }}>
+                          <Typography
+                            variant="body1"
+                            sx={{
+                              color: 'rgba(255,255,255,0.7)',
+                              whiteSpace: 'pre-line',
+                              mb: 2,
+                            }}
+                          >
+                            {record.answer || '답변 없음'}
+                          </Typography>
+                          {record.feedback && (
+                            <Box sx={{ mt: 2, p: 2, background: 'rgba(0, 180, 216, 0.1)', borderRadius: '8px' }}>
+                              <Typography
+                                variant="body1"
+                                sx={{
+                                  color: '#fff',
+                                  whiteSpace: 'pre-line',
+                                }}
+                              >
+                                {record.feedback}
+                              </Typography>
+                            </Box>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  );
+                })}
+              </Grid>
+            )
+          ) : (
+            !testHistory || testHistory.length === 0 ? (
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minHeight: '200px',
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  backdropFilter: 'blur(10px)',
+                  borderRadius: '20px',
+                  p: 4,
+                  mb: 4,
+                }}
+              >
+                <Typography
+                  variant="h6"
+                  sx={{
+                    color: 'rgba(255,255,255,0.8)',
+                    mb: 2,
+                    textAlign: 'center',
+                  }}
+                >
+                  선택한 프로필의 테스트 기록이 없습니다
+                </Typography>
+              </Box>
+            ) : (
+              <Grid container spacing={3}>
+                {testHistory.map((record) => {
+                  const profile = profiles.find(p => p._id === record.profileId);
+                  return (
+                    <Grid item xs={12} key={record._id || record.id || Math.random()}>
+                      <Card
+                        sx={{
+                          background: 'rgba(255, 255, 255, 0.1)',
+                          backdropFilter: 'blur(10px)',
+                          borderRadius: '20px',
+                          boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+                          border: '1px solid rgba(255, 255, 255, 0.18)',
+                          transition: 'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out',
+                          '&:hover': {
+                            transform: 'translateY(-5px)',
+                            boxShadow: '0 12px 40px 0 rgba(31, 38, 135, 0.5)',
+                          },
+                        }}
+                      >
+                        <CardContent>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                             <Typography
-                              variant="body1"
+                              variant="h6"
                               sx={{
                                 color: '#fff',
-                                whiteSpace: 'pre-line',
+                                fontWeight: 'bold',
                               }}
                             >
-                              {record.feedback}
+                              {record.createdAt ? new Date(record.createdAt).toLocaleDateString() : '날짜 없음'}
                             </Typography>
+                            <Box sx={{ display: 'flex', gap: 1 }}>
+                              <Chip
+                                label={profile ? profile.name : '기본 프로필'}
+                                sx={{
+                                  backgroundColor: profile ? profile.color || '#4CAF50' : '#4CAF50',
+                                  color: '#fff',
+                                  fontWeight: 'bold',
+                                }}
+                              />
+                              <Chip
+                                label={`점수: ${record.score}점`}
+                                sx={{
+                                  backgroundColor: record.score >= 60 ? '#4CAF50' : '#F44336',
+                                  color: '#fff',
+                                  fontWeight: 'bold',
+                                }}
+                              />
+                            </Box>
                           </Box>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                );
-              })}
-            </Grid>
+                          <Typography
+                            variant="h5"
+                            sx={{
+                              color: '#fff',
+                              fontWeight: 'bold',
+                              mb: 2,
+                            }}
+                          >
+                            {record.title || '테스트 제목 없음'}
+                          </Typography>
+                          <Typography
+                            variant="body1"
+                            sx={{
+                              color: 'rgba(255,255,255,0.7)',
+                              whiteSpace: 'pre-line',
+                              mb: 2,
+                            }}
+                          >
+                            {record.description || '테스트 설명 없음'}
+                          </Typography>
+                          {record.feedback && (
+                            <Box sx={{ mt: 2, p: 2, background: 'rgba(0, 180, 216, 0.1)', borderRadius: '8px' }}>
+                              <Typography
+                                variant="body1"
+                                sx={{
+                                  color: '#fff',
+                                  whiteSpace: 'pre-line',
+                                }}
+                              >
+                                {record.feedback}
+                              </Typography>
+                            </Box>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  );
+                })}
+              </Grid>
+            )
           )}
         </>
       )}

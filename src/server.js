@@ -36,7 +36,7 @@ const profileSchema = new mongoose.Schema({
   name: { type: String, required: true },
   category: { type: String, required: true },
   difficulty: { type: String, required: true },
-  userId: { type: String, required: true }, // <- 여기 추가
+  userId: { type: String, required: true }, 
 });
 
 const User = mongoose.model('User', userSchema);
@@ -446,6 +446,87 @@ app.get('/api/learning-history', async (req, res) => {
   } catch (error) {
     console.error('학습 기록 조회 중 오류 발생:', error);
     res.status(500).json({ error: '서버 오류가 발생했습니다.' });
+  }
+});
+
+// 테스트 문제 생성 API
+app.post('/api/generate-test-questions', async (req, res) => {
+  const { difficulty, count } = req.body;
+  
+  try {
+    const prompt = `${difficulty} 난이도의 프로그래밍 문제 ${count}개를 생성해주세요.
+    각 문제는 다음 형식으로 작성해주세요:
+
+    문제: (질문)
+    A. (보기1)
+    B. (보기2)
+    C. (보기3)
+    D. (보기4)
+    정답: (A/B/C/D)
+    ---`;
+
+    const questions = await callGemini(prompt);
+    console.log('생성된 원본 문제:', questions);
+
+    // 문제 파싱
+    const parsedQuestions = questions.split('---')
+      .filter(q => q.trim())
+      .map(q => {
+        try {
+          const lines = q.trim().split('\n').map(line => line.trim());
+          
+          // 문제 추출 (번호와 마크다운 형식 제거)
+          const questionLine = lines.find(l => l.includes('문제:'));
+          if (!questionLine) return null;
+          const question = questionLine
+            .replace(/^\*\*\d+\.\s*/, '') // 번호 제거
+            .replace(/\*\*/g, '') // 마크다운 제거
+            .replace('문제:', '')
+            .trim();
+
+          // 보기 추출 (들여쓰기 제거)
+          const options = lines
+            .filter(l => /^[A-D]\./.test(l.trim()))
+            .map(l => l.trim().replace(/^[A-D]\./, '').trim());
+
+          // 정답 추출
+          const answerLine = lines.find(l => l.includes('정답:'));
+          if (!answerLine) return null;
+          const answer = answerLine.replace('정답:', '').trim();
+
+          // 유효성 검사
+          if (!question || options.length !== 4 || !['A', 'B', 'C', 'D'].includes(answer)) {
+            console.log('유효성 검사 실패:', { question, options, answer });
+            return null;
+          }
+
+          return { question, options, correctAnswer: answer };
+        } catch (error) {
+          console.error('문제 파싱 오류:', error);
+          return null;
+        }
+      })
+      .filter(q => q !== null);
+
+    if (parsedQuestions.length === 0) {
+      console.error('파싱된 문제가 없음. 원본:', questions);
+      throw new Error('문제 생성에 실패했습니다. 다시 시도해주세요.');
+    }
+
+    console.log('파싱된 문제 수:', parsedQuestions.length);
+    console.log('첫 번째 파싱된 문제:', parsedQuestions[0]);
+
+    res.json({ 
+      success: true,
+      questions: parsedQuestions 
+    });
+  } catch (error) {
+    console.error('테스트 문제 생성 오류:', error);
+    res.status(500).json({ 
+      success: false,
+      error: "테스트 문제 생성 중 오류가 발생했습니다.",
+      details: error.message 
+    });
   }
 });
 
