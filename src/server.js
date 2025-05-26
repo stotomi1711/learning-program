@@ -39,9 +39,21 @@ const profileSchema = new mongoose.Schema({
   userId: { type: String, required: true }, 
 });
 
+const testDataSchema = new mongoose.Schema({
+  userId: { type: String, required: true },
+  difficulty: { type: String, required: true },
+  keyword: { type: String, required: true },
+  category: { type: String, required: true },
+  question: { type: String, required: true },
+  options: [{ type: String, required: true }],
+  correctAnswer: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now }
+}, { versionKey: false });
+
 const User = mongoose.model('User', userSchema);
 const Question = mongoose.model('Question', questionSchema);
 const Profile = mongoose.model('Profile', profileSchema);
+const TestData = mongoose.model('testdata', testDataSchema);
 
 // 미들웨어 설정
 app.use(cors());
@@ -337,10 +349,10 @@ app.post('/api/generate-question', async (req, res) => {
     (질문 내용)
     
     객관식 보기:
-    A. ...
-    B. ...
-    C. ...
-    D. ...
+    1. ...
+    2. ...
+    3. ...
+    4. ...
     `;
     console.log('생성할 프롬프트:', prompt);
     
@@ -451,19 +463,24 @@ app.get('/api/learning-history', async (req, res) => {
 
 // 테스트 문제 생성 API
 app.post('/api/generate-test-questions', async (req, res) => {
-  const { difficulty, count } = req.body;
+  const { difficulty, count, userId, keyword, category } = req.body;
   
   try {
-    const prompt = `${difficulty} 난이도의 프로그래밍 문제 ${count}개를 생성해주세요.
-    각 문제는 다음 형식으로 작성해주세요:
+    const prompt = `${category} 카테고리의 ${keyword}에 대한 ${difficulty} 난이도의 객관식 문제 ${count}개를 생성해주세요.
+    문제는 객관식 5문제, 단답형 3문제, 서술형 2문제로 구성해주세요.
+    각 문제는 반드시 다음 형식으로 작성해주세요. 각 문제 사이에는 '---'로 구분해주세요:
 
-    문제: (질문)
+    문제: (질문 내용)
     A. (보기1)
     B. (보기2)
     C. (보기3)
     D. (보기4)
-    정답: (A/B/C/D)
-    ---`;
+    정답: (A/B/C/D 중 하나)
+    ---
+
+    위 형식을 정확히 지켜서 ${count}개의 문제를 생성해주세요.
+    각 문제는 반드시 위 형식을 그대로 따르고, 문제 사이에는 '---'로 구분해주세요.
+    정답은 반드시 A, B, C, D 중 하나로만 작성해주세요.`;
 
     const questions = await callGemini(prompt);
     console.log('생성된 원본 문제:', questions);
@@ -475,19 +492,20 @@ app.post('/api/generate-test-questions', async (req, res) => {
         try {
           const lines = q.trim().split('\n').map(line => line.trim());
           
-          // 문제 추출 (번호와 마크다운 형식 제거)
+          // 문제 추출
           const questionLine = lines.find(l => l.includes('문제:'));
           if (!questionLine) return null;
-          const question = questionLine
-            .replace(/^\*\*\d+\.\s*/, '') // 번호 제거
-            .replace(/\*\*/g, '') // 마크다운 제거
-            .replace('문제:', '')
-            .trim();
+          const question = questionLine.replace('문제:', '').trim();
 
-          // 보기 추출 (들여쓰기 제거)
-          const options = lines
-            .filter(l => /^[A-D]\./.test(l.trim()))
-            .map(l => l.trim().replace(/^[A-D]\./, '').trim());
+          // 보기 추출
+          const options = [];
+          for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            if (line.startsWith('A.') || line.startsWith('B.') || 
+                line.startsWith('C.') || line.startsWith('D.')) {
+              options.push(line.substring(2).trim());
+            }
+          }
 
           // 정답 추출
           const answerLine = lines.find(l => l.includes('정답:'));
@@ -515,6 +533,21 @@ app.post('/api/generate-test-questions', async (req, res) => {
 
     console.log('파싱된 문제 수:', parsedQuestions.length);
     console.log('첫 번째 파싱된 문제:', parsedQuestions[0]);
+
+    if (userId) {
+      const testDataDocs = parsedQuestions.map(q => ({
+        userId,
+        difficulty,
+        keyword,
+        category,
+        question: q.question,
+        options: q.options,
+        correctAnswer: q.correctAnswer
+      }));
+
+      await TestData.insertMany(testDataDocs);
+      console.log('테스트 문제 DB 저장 완료:', testDataDocs.length);
+    }
 
     res.json({ 
       success: true,

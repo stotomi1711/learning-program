@@ -13,11 +13,18 @@ import {
   DialogActions,
   CircularProgress,
   Chip,
+  TextField,
 } from '@mui/material';
+import { useUser } from './contexts/UserContext';
 
 function MockTest() {
+  const { user } = useUser();
   const [openStartDialog, setOpenStartDialog] = useState(false);
+  const [openKeywordDialog, setOpenKeywordDialog] = useState(false);
+  const [openCategoryDialog, setOpenCategoryDialog] = useState(false);
+  const [customKeyword, setCustomKeyword] = useState('');
   const [currentTest, setCurrentTest] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState(null);
   const [isTestStarted, setIsTestStarted] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [userAnswers, setUserAnswers] = useState([]);
@@ -26,6 +33,41 @@ function MockTest() {
   const [timeLeft, setTimeLeft] = useState(0); // 남은 시간 (초)
   const [showResults, setShowResults] = useState(false);
   const [testResults, setTestResults] = useState(null);
+
+  const categories = [
+    { 
+      name: '프로그래밍 언어', 
+      color: '#2196F3',
+      description: '다양한 프로그래밍 언어에 대한 문제로 테스트를 해보세요.',
+      keywords: [
+        { name: 'Python', color: '#4CAF50' },
+        { name: 'Java', color: '#FF5722' },
+        { name: 'JavaScript', color: '#FFC107' },
+        { name: 'C++', color: '#9C27B0' },
+        { name: 'C#', color: '#673AB7' },
+        { name: 'Ruby', color: '#E91E63' },
+        { name: 'HTML', color: '#FF9800' },
+        { name: 'Swift', color: '#F44336' },
+        { name: 'Kotlin', color: '#795548' },
+        { name: 'TypeScript', color: '#2196F3' }
+      ]
+    },
+    { 
+      name: '자격증', 
+      color: '#FF9800',
+      description: '자격증 시험 준비를 위한 문제로 테스트를 해보세요.',
+      keywords: [
+        { name: '정보처리기사', color: '#4CAF50' },
+        { name: '네트워크관리사', color: '#2196F3' },
+        { name: '정보보안기사', color: '#F44336' },
+        { name: 'SQLD', color: '#FF9800' },
+        { name: '리눅스마스터', color: '#9C27B0' },
+        { name: 'CCNA', color: '#00BCD4' },
+        { name: 'AWS', color: '#FF5722' },
+        { name: 'OCP', color: '#673AB7' }
+      ]
+    }
+  ];
 
   const handleTestComplete = useCallback(() => {
     setIsLoading(true);
@@ -123,7 +165,28 @@ function MockTest() {
 
   const handleStartTest = (test) => {
     setCurrentTest(test);
+    setCustomKeyword(''); // 키워드 초기화
+    setSelectedCategory(null); // 카테고리 초기화
+    setOpenCategoryDialog(true);
+  };
+
+  const handleCategorySelect = (category) => {
+    setSelectedCategory(category);
+    setOpenCategoryDialog(false);
+    setOpenKeywordDialog(true);
+  };
+
+  const handleKeywordSelect = (keyword) => {
+    setCustomKeyword(keyword);
+    setOpenKeywordDialog(false);
     setOpenStartDialog(true);
+  };
+
+  const handleDirectInputKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      setOpenKeywordDialog(false);
+      setOpenStartDialog(true);
+    }
   };
 
   const handleConfirmStart = async () => {
@@ -138,7 +201,10 @@ function MockTest() {
         },
         body: JSON.stringify({
           difficulty: currentTest.difficulty,
-          count: currentTest.questions
+          count: currentTest.questions,
+          userId: user?.userId || null,
+          keyword: customKeyword.trim(),
+          category: selectedCategory.name
         }),
       });
 
@@ -155,7 +221,6 @@ function MockTest() {
       setTestQuestions(data.questions);
       setIsTestStarted(true);
       setUserAnswers(new Array(data.questions.length).fill(null));
-      // 시간 설정 (60분 = 3600초)
       setTimeLeft(3600);
     } catch (error) {
       console.error('Error:', error);
@@ -176,6 +241,19 @@ function MockTest() {
     } else {
       handleTestComplete();
     }
+  };
+
+  // 테스트 목록으로 돌아가기 버튼 클릭 시 모든 상태 초기화
+  const handleBackToList = () => {
+    setShowResults(false);
+    setIsTestStarted(false);
+    setCurrentQuestion(0);
+    setUserAnswers([]);
+    setTestQuestions([]);
+    setTimeLeft(0);
+    setCustomKeyword(''); // 키워드 초기화
+    setSelectedCategory(null); // 카테고리 초기화
+    setCurrentTest(null); // 현재 테스트 초기화
   };
 
   if (showResults && testResults) {
@@ -322,14 +400,7 @@ function MockTest() {
 
               <Button
                 variant="contained"
-                onClick={() => {
-                  setShowResults(false);
-                  setIsTestStarted(false);
-                  setCurrentQuestion(0);
-                  setUserAnswers([]);
-                  setTestQuestions([]);
-                  setTimeLeft(0);
-                }}
+                onClick={handleBackToList}
                 sx={{
                   background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
                   color: '#fff',
@@ -581,6 +652,310 @@ function MockTest() {
         </Grid>
 
         <Dialog
+          open={openCategoryDialog}
+          onClose={() => setOpenCategoryDialog(false)}
+          PaperProps={{
+            sx: {
+              background: 'rgba(17, 24, 39, 0.95)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '20px',
+              maxWidth: '500px',
+              width: '100%',
+            },
+          }}
+        >
+          <DialogTitle sx={{ 
+            color: 'primary.main',
+            textAlign: 'center',
+            fontSize: '1.8rem',
+            fontWeight: 'bold',
+            pt: 3
+          }}>
+            카테고리 선택
+          </DialogTitle>
+          <DialogContent sx={{ p: 3 }}>
+            <Typography sx={{ 
+              mb: 4, 
+              color: '#fff',
+              textAlign: 'center',
+              fontSize: '1.1rem',
+              opacity: 0.8
+            }}>
+              테스트할 카테고리를 선택해주세요
+            </Typography>
+            <Grid container spacing={2}>
+              {categories.map((category) => (
+                <Grid item xs={12} key={category.name}>
+                  <Button
+                    fullWidth
+                    onClick={() => handleCategorySelect(category)}
+                    sx={{
+                      height: '100px',
+                      borderRadius: '12px',
+                      background: `linear-gradient(135deg, ${category.color} 0%, ${category.color}99 100%)`,
+                      color: 'white',
+                      textTransform: 'none',
+                      transition: 'all 0.3s ease',
+                      position: 'relative',
+                      overflow: 'hidden',
+                      padding: '0 24px',
+                      '&:hover': {
+                        transform: 'translateY(-3px)',
+                        boxShadow: `0 8px 16px ${category.color}40`,
+                        background: `linear-gradient(135deg, ${category.color} 0%, ${category.color} 100%)`,
+                      },
+                      '&::after': {
+                        content: '""',
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'linear-gradient(45deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%)',
+                        opacity: 0,
+                        transition: 'opacity 0.3s ease',
+                      },
+                      '&:hover::after': {
+                        opacity: 1,
+                      }
+                    }}
+                  >
+                    <Box sx={{ 
+                      display: 'flex', 
+                      flexDirection: 'column',
+                      alignItems: 'flex-start',
+                      width: '100%',
+                      gap: 0.5
+                    }}>
+                      <Typography sx={{ 
+                        fontSize: '1.4rem',
+                        fontWeight: 'bold',
+                        letterSpacing: '0.5px'
+                      }}>
+                        {category.name}
+                      </Typography>
+                      <Typography sx={{ 
+                        fontSize: '0.9rem',
+                        opacity: 0.9,
+                        textAlign: 'left'
+                      }}>
+                        {category.description}
+                      </Typography>
+                    </Box>
+                  </Button>
+                </Grid>
+              ))}
+            </Grid>
+          </DialogContent>
+          <DialogActions sx={{ 
+            justifyContent: 'center', 
+            gap: 2, 
+            pb: 3,
+            pt: 1
+          }}>
+            <Button
+              onClick={() => setOpenCategoryDialog(false)}
+              variant="outlined"
+              sx={{
+                color: 'primary.main',
+                borderColor: 'primary.main',
+                borderRadius: '25px',
+                px: 4,
+                py: 1,
+                fontSize: '1rem',
+                '&:hover': {
+                  borderColor: 'primary.main',
+                  backgroundColor: 'rgba(0, 180, 216, 0.1)',
+                },
+              }}
+            >
+              취소
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog
+          open={openKeywordDialog}
+          onClose={() => setOpenKeywordDialog(false)}
+          PaperProps={{
+            sx: {
+              background: 'rgba(17, 24, 39, 0.95)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '20px',
+              maxWidth: '500px',
+              width: '100%',
+            },
+          }}
+        >
+          <DialogTitle sx={{ 
+            color: 'primary.main',
+            textAlign: 'center',
+            fontSize: '1.8rem',
+            fontWeight: 'bold',
+            pt: 3
+          }}>
+            키워드 선택
+          </DialogTitle>
+          <DialogContent sx={{ p: 3 }}>
+            <Typography sx={{ 
+              mb: 4, 
+              color: '#fff',
+              textAlign: 'center',
+              fontSize: '1.1rem',
+              opacity: 0.8
+            }}>
+              {selectedCategory?.name} 카테고리에서 학습할 키워드를 선택해주세요
+            </Typography>
+
+            <Box sx={{ mb: 4 }}>
+              <Typography sx={{ 
+                color: '#fff',
+                fontSize: '1rem',
+                mb: 2,
+                opacity: 0.8
+              }}>
+                직접 입력하기
+              </Typography>
+              <TextField
+                fullWidth
+                placeholder="원하는 키워드를 입력하세요"
+                value={customKeyword}
+                onChange={(e) => setCustomKeyword(e.target.value)}
+                onKeyPress={handleDirectInputKeyPress}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    color: '#fff',
+                    borderRadius: '12px',
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                    '& fieldset': {
+                      borderColor: 'rgba(255, 255, 255, 0.1)',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: 'rgba(255, 255, 255, 0.2)',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: selectedCategory?.color,
+                    },
+                  },
+                  '& .MuiInputLabel-root': {
+                    color: 'rgba(255, 255, 255, 0.7)',
+                  },
+                  '& .MuiInputBase-input': {
+                    '&::placeholder': {
+                      color: 'rgba(255, 255, 255, 0.5)',
+                      opacity: 1,
+                    },
+                  },
+                }}
+              />
+            </Box>
+
+            <Typography sx={{ 
+              color: '#fff',
+              fontSize: '1rem',
+              mb: 2,
+              opacity: 0.8
+            }}>
+              추천 키워드
+            </Typography>
+            <Grid container spacing={2}>
+              {selectedCategory?.keywords.map((keyword) => (
+                <Grid item xs={6} key={keyword.name}>
+                  <Button
+                    fullWidth
+                    onClick={() => handleKeywordSelect(keyword.name)}
+                    sx={{
+                      height: '60px',
+                      borderRadius: '16px',
+                      background: `linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)`,
+                      color: 'rgba(255, 255, 255, 0.8)',
+                      textTransform: 'none',
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      position: 'relative',
+                      overflow: 'hidden',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      backdropFilter: 'blur(10px)',
+                      '&:hover': {
+                        transform: 'translateY(-3px) scale(1.02)',
+                        boxShadow: `0 8px 20px ${keyword.color}40`,
+                        background: `linear-gradient(135deg, ${keyword.color} 0%, ${keyword.color}99 100%)`,
+                        borderColor: 'transparent',
+                        color: 'white',
+                      },
+                      '&::before': {
+                        content: '""',
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: `linear-gradient(45deg, ${keyword.color}20 0%, transparent 100%)`,
+                        opacity: 0,
+                        transition: 'opacity 0.3s ease',
+                      },
+                      '&:hover::before': {
+                        opacity: 1,
+                      },
+                      '&::after': {
+                        content: '""',
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'linear-gradient(45deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%)',
+                        opacity: 0,
+                        transition: 'opacity 0.3s ease',
+                      },
+                      '&:hover::after': {
+                        opacity: 1,
+                      }
+                    }}
+                  >
+                    <Typography sx={{ 
+                      fontSize: '1.1rem',
+                      fontWeight: 'bold',
+                      letterSpacing: '0.5px',
+                      position: 'relative',
+                      zIndex: 1
+                    }}>
+                      {keyword.name}
+                    </Typography>
+                  </Button>
+                </Grid>
+              ))}
+            </Grid>
+          </DialogContent>
+          <DialogActions sx={{ 
+            justifyContent: 'center', 
+            gap: 2, 
+            pb: 3,
+            pt: 1
+          }}>
+            <Button
+              onClick={() => setOpenKeywordDialog(false)}
+              variant="outlined"
+              sx={{
+                color: 'primary.main',
+                borderColor: 'primary.main',
+                borderRadius: '25px',
+                px: 4,
+                py: 1,
+                fontSize: '1rem',
+                '&:hover': {
+                  borderColor: 'primary.main',
+                  backgroundColor: 'rgba(0, 180, 216, 0.1)',
+                },
+              }}
+            >
+              취소
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog
           open={openStartDialog}
           onClose={() => setOpenStartDialog(false)}
           PaperProps={{
@@ -604,6 +979,10 @@ function MockTest() {
               • 문제 수: {currentTest?.questions}문제
               <br />
               • 난이도: {currentTest?.difficulty}
+              <br />
+              • 카테고리: {selectedCategory?.name}
+              <br />
+              • 키워드: {customKeyword}
             </Typography>
           </DialogContent>
           <DialogActions sx={{ justifyContent: 'center', gap: 2, pb: 2 }}>
