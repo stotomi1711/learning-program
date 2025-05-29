@@ -33,6 +33,7 @@ function Learning() {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [selectedDifficulty, setSelectedDifficulty] = useState('초급');
   const [feedback, setFeedback] = useState(null);
+  const [showLoadingDialog, setShowLoadingDialog] = useState(false);
   const navigate = useNavigate();
 
   const languages = [
@@ -103,6 +104,7 @@ function Learning() {
     if (!selectedItem) return;
 
     setIsLoading(true);
+    setShowLoadingDialog(true);
     try {
       const response = await fetch('http://localhost:5000/api/generate-question', {
         method: 'POST',
@@ -132,6 +134,7 @@ function Learning() {
       alert(`문제 생성 중 오류가 발생했습니다: ${error.message}`);
     } finally {
       setIsLoading(false);
+      setShowLoadingDialog(false);
     }
   };
 
@@ -181,6 +184,7 @@ function Learning() {
 
   const handleNextQuestion = async () => {
     setIsLoading(true);
+    setShowLoadingDialog(true);
     try {
       const response = await fetch('http://localhost:5000/api/generate-question', {
         method: 'POST',
@@ -211,6 +215,7 @@ function Learning() {
       alert(`문제 생성 중 오류가 발생했습니다: ${error.message}`);
     } finally {
       setIsLoading(false);
+      setShowLoadingDialog(false);
     }
   };
 
@@ -524,7 +529,80 @@ function Learning() {
             </Button>
           </DialogActions>
         </Dialog>
+
+        {/* Loading Dialog */}
+        <Dialog
+          open={showLoadingDialog}
+          PaperProps={{
+            sx: {
+              background: 'rgba(30, 41, 59, 0.95)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '16px',
+              minWidth: '300px',
+            }
+          }}
+        >
+          <DialogContent sx={{ textAlign: 'center', py: 4 }}>
+            <CircularProgress size={60} sx={{ mb: 2 }} />
+            <Typography variant="h6" color="primary.main" sx={{ mb: 1 }}>
+              문제 생성 중...
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              잠시만 기다려주세요.
+            </Typography>
+          </DialogContent>
+        </Dialog>
       </Container>
+    );
+  }
+
+  // isLoading일 때 전체 화면 로딩 UI
+  if (isLoading) {
+    return (
+      <Box
+        sx={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: 'rgba(0, 0, 0, 0.9)',
+          backdropFilter: 'blur(8px)',
+          zIndex: 9999,
+        }}
+      >
+        <CircularProgress 
+          size={80} 
+          sx={{ 
+            color: 'primary.main',
+            mb: 3
+          }} 
+        />
+        <Typography 
+          variant="h5" 
+          sx={{ 
+            color: '#fff',
+            textAlign: 'center',
+            mb: 2
+          }}
+        >
+          문제 생성 중...
+        </Typography>
+        <Typography 
+          variant="body1" 
+          sx={{ 
+            color: 'rgba(255, 255, 255, 0.7)',
+            textAlign: 'center'
+          }}
+        >
+          잠시만 기다려주세요
+        </Typography>
+      </Box>
     );
   }
 

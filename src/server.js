@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const ReactMarkdown = require('react-markdown');
 
 
 const app = express();
@@ -39,21 +40,9 @@ const profileSchema = new mongoose.Schema({
   userId: { type: String, required: true }, 
 });
 
-const testDataSchema = new mongoose.Schema({
-  userId: { type: String, required: true },
-  difficulty: { type: String, required: true },
-  keyword: { type: String, required: true },
-  category: { type: String, required: true },
-  question: { type: String, required: true },
-  options: [{ type: String, required: true }],
-  correctAnswer: { type: String, required: true },
-  createdAt: { type: Date, default: Date.now }
-}, { versionKey: false });
-
 const User = mongoose.model('User', userSchema);
 const Question = mongoose.model('Question', questionSchema);
 const Profile = mongoose.model('Profile', profileSchema);
-const TestData = mongoose.model('testdata', testDataSchema);
 
 // 미들웨어 설정
 app.use(cors());
@@ -461,103 +450,147 @@ app.get('/api/learning-history', async (req, res) => {
   }
 });
 
-// 테스트 문제 생성 API
 app.post('/api/generate-test-questions', async (req, res) => {
   const { difficulty, count, userId, keyword, category } = req.body;
-  
+  console.log('\n=== 테스트 문제 생성 시작 ===');
+  console.log(`난이도: ${difficulty}`);
+  console.log(`문제 수: ${count}`);
+  console.log(`키워드: ${keyword}`);
+  console.log(`카테고리: ${category}`);
+  console.log('===========================\n');
+
   try {
-    const prompt = `${category} 카테고리의 ${keyword}에 대한 ${difficulty} 난이도의 객관식 문제 ${count}개를 생성해주세요.
-    문제는 객관식 5문제, 단답형 3문제, 서술형 2문제로 구성해주세요.
-    각 문제는 반드시 다음 형식으로 작성해주세요. 각 문제 사이에는 '---'로 구분해주세요:
+    const questions = [];
+    let objectiveCount = 0;
+    let subjectiveCount = 0;
+    const targetObjectiveCount = Math.floor(count * 0.7); // 70% 객관식
 
-    문제: (질문 내용)
-    A. (보기1)
-    B. (보기2)
-    C. (보기3)
-    D. (보기4)
-    정답: (A/B/C/D 중 하나)
-    ---
+    for (let i = 0; i < count; i++) {
+      // 남은 문제 수에 따라 객관식/주관식 결정
+      const isObjective = objectiveCount < targetObjectiveCount;
+      
+      const prompt = `
+      다음 조건에 맞는 문제를 생성해주세요:
+      - 난이도: ${difficulty}
+      - 키워드: ${keyword}
+      - 카테고리: ${category}
+      - 문제 유형: ${isObjective ? '객관식' : '주관식'}
 
-    위 형식을 정확히 지켜서 ${count}개의 문제를 생성해주세요.
-    각 문제는 반드시 위 형식을 그대로 따르고, 문제 사이에는 '---'로 구분해주세요.
-    정답은 반드시 A, B, C, D 중 하나로만 작성해주세요.`;
+      문제 형식은 아래와 같이 구성해줘(객관식이면 <보기>, 주관식이면 <보기>없이 문제만 생성해줘):
 
-    const questions = await callGemini(prompt);
-    console.log('생성된 원본 문제:', questions);
+      문제:
+      (질문 내용)
+      
+      ${isObjective ? '객관식 보기:\n1. ...\n2. ...\n3. ...\n4. ...\n\n정답: (정답 번호)' : ''}
+      `;
 
-    // 문제 파싱
-    const parsedQuestions = questions.split('---')
-      .filter(q => q.trim())
-      .map(q => {
-        try {
-          const lines = q.trim().split('\n').map(line => line.trim());
-          
-          // 문제 추출
-          const questionLine = lines.find(l => l.includes('문제:'));
-          if (!questionLine) return null;
-          const question = questionLine.replace('문제:', '').trim();
+      const question = await callGemini(prompt);
+      
+      // 문제 파싱
+      const questionText = question.split('객관식 보기:')[0].replace('문제:', '').trim();
+      let options = [];
+      let correctAnswer = '';
 
-          // 보기 추출
-          const options = [];
-          for (let i = 0; i < lines.length; i++) {
-            const line = lines[i];
-            if (line.startsWith('A.') || line.startsWith('B.') || 
-                line.startsWith('C.') || line.startsWith('D.')) {
-              options.push(line.substring(2).trim());
-            }
-          }
-
-          // 정답 추출
-          const answerLine = lines.find(l => l.includes('정답:'));
-          if (!answerLine) return null;
-          const answer = answerLine.replace('정답:', '').trim();
-
-          // 유효성 검사
-          if (!question || options.length !== 4 || !['A', 'B', 'C', 'D'].includes(answer)) {
-            console.log('유효성 검사 실패:', { question, options, answer });
-            return null;
-          }
-
-          return { question, options, correctAnswer: answer };
-        } catch (error) {
-          console.error('문제 파싱 오류:', error);
-          return null;
+      if (isObjective) {
+        const optionsText = question.split('객관식 보기:')[1]?.split('정답:')[0]?.trim() || '';
+        const correctAnswerText = question.split('정답:')[1]?.trim() || '';
+        
+        options = optionsText.split('\n')
+          .filter(line => line.trim().match(/^\d+\./))
+          .map(line => line.replace(/^\d+\./, '').trim());
+        
+        // 보기가 4개가 아니면 다시 생성
+        if (options.length !== 4) {
+          i--; // 현재 반복을 다시 시도
+          continue;
         }
-      })
-      .filter(q => q !== null);
+        
+        // 정답 번호 추출 (1-4 사이의 숫자)
+        const correctAnswerNumber = parseInt(correctAnswerText.match(/\d+/)?.[0]);
+        if (!correctAnswerNumber || correctAnswerNumber < 1 || correctAnswerNumber > 4) {
+          i--; // 정답 번호가 유효하지 않으면 다시 생성
+          continue;
+        }
+        
+        correctAnswer = options[correctAnswerNumber - 1];
+        objectiveCount++;
+      } else {
+        subjectiveCount++;
+      }
 
-    if (parsedQuestions.length === 0) {
-      console.error('파싱된 문제가 없음. 원본:', questions);
-      throw new Error('문제 생성에 실패했습니다. 다시 시도해주세요.');
+      questions.push({
+        question: questionText,
+        isObjective,
+        options: isObjective ? options : [],
+        correctAnswer: isObjective ? correctAnswer : ''
+      });
+
+      // 각 문제 생성 시 로그 출력
+      console.log(`\n=== 문제 ${i + 1} 생성 완료 ===`);
+      console.log(`유형: ${isObjective ? '객관식' : '주관식'}`);
+      console.log(`문제: ${questionText}`);
+      if (isObjective) {
+        console.log('보기:');
+        options.forEach((option, idx) => {
+          console.log(`${idx + 1}. ${option}`);
+        });
+        console.log(`정답: ${correctAnswer}`);
+      }
+      console.log('===========================\n');
     }
 
-    console.log('파싱된 문제 수:', parsedQuestions.length);
-    console.log('첫 번째 파싱된 문제:', parsedQuestions[0]);
+    // 최종 비율 확인
+    console.log('\n=== 테스트 문제 생성 완료 ===');
+    console.log(`생성된 문제 비율 - 객관식: ${objectiveCount}, 주관식: ${subjectiveCount}`);
+    console.log('===========================\n');
 
-    if (userId) {
-      const testDataDocs = parsedQuestions.map(q => ({
-        userId,
-        difficulty,
-        keyword,
-        category,
-        question: q.question,
-        options: q.options,
-        correctAnswer: q.correctAnswer
-      }));
-
-      await TestData.insertMany(testDataDocs);
-      console.log('테스트 문제 DB 저장 완료:', testDataDocs.length);
-    }
-
-    res.json({ 
-      success: true,
-      questions: parsedQuestions 
-    });
+    res.json({ success: true, questions });
   } catch (error) {
-    console.error('테스트 문제 생성 오류:', error);
+    console.error('테스트 문제 생성 중 오류 발생:', error);
     res.status(500).json({ 
       success: false,
-      error: "테스트 문제 생성 중 오류가 발생했습니다.",
+      error: "서버에서 오류가 발생했습니다.",
+      details: error.message 
+    });
+  }
+});
+
+app.post('/api/evaluate-subjective-answers', async (req, res) => {
+  const { answers } = req.body;
+
+  try {
+    const evaluationResults = await Promise.all(answers.map(async (answer) => {
+      const prompt = `
+      다음 문제와 답변을 평가해주세요.
+      답변이 문제의 핵심 내용을 포함하고 있다면 정답으로 처리해주세요.
+      완벽하지 않더라도 핵심 내용이 포함되어 있다면 정답으로 처리해주세요.
+      정확히 "정답" 또는 "오답"이라고만 답변해주세요.
+      
+      문제: ${answer.question}
+      답변: ${answer.answer}
+      `;
+
+      const evaluation = await callGemini(prompt);
+      console.log('평가 결과:', {
+        문제: answer.question,
+        답변: answer.answer,
+        평가: evaluation
+      });
+      
+      const isCorrect = evaluation.trim().toLowerCase().includes('정답');
+      
+      return {
+        index: answer.index,
+        isCorrect,
+        feedback: isCorrect ? '정답' : '오답'
+      };
+    }));
+
+    res.json(evaluationResults);
+  } catch (error) {
+    console.error('주관식 답변 평가 중 오류 발생:', error);
+    res.status(500).json({ 
+      error: "주관식 답변 평가 중 오류가 발생했습니다.",
       details: error.message 
     });
   }

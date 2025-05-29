@@ -16,9 +16,12 @@ import {
   TextField,
 } from '@mui/material';
 import { useUser } from './contexts/UserContext';
+import { useNavigate } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
 
 function MockTest() {
   const { user } = useUser();
+  const navigate = useNavigate();
   const [openStartDialog, setOpenStartDialog] = useState(false);
   const [openKeywordDialog, setOpenKeywordDialog] = useState(false);
   const [openCategoryDialog, setOpenCategoryDialog] = useState(false);
@@ -33,6 +36,7 @@ function MockTest() {
   const [timeLeft, setTimeLeft] = useState(0); // 남은 시간 (초)
   const [showResults, setShowResults] = useState(false);
   const [testResults, setTestResults] = useState(null);
+  const [showLoadingDialog, setShowLoadingDialog] = useState(false);
 
   const categories = [
     { 
@@ -45,7 +49,7 @@ function MockTest() {
         { name: 'JavaScript', color: '#FFC107' },
         { name: 'C++', color: '#9C27B0' },
         { name: 'C#', color: '#673AB7' },
-        { name: 'Ruby', color: '#E91E63' },
+        { name: 'C', color: '#E91E63' },
         { name: 'HTML', color: '#FF9800' },
         { name: 'Swift', color: '#F44336' },
         { name: 'Kotlin', color: '#795548' },
@@ -72,31 +76,101 @@ function MockTest() {
   const handleTestComplete = useCallback(() => {
     setIsLoading(true);
     
-    // 결과 계산
-    const correctAnswers = userAnswers.filter((answer, index) => {
-      const correctAnswer = testQuestions[index].correctAnswer;
-      return answer === ['A', 'B', 'C', 'D'].indexOf(correctAnswer);
-    }).length;
+    // 주관식 문제 답변 평가를 위한 API 호출
+    const evaluateSubjectiveAnswers = async () => {
+      try {
+        const subjectiveAnswers = userAnswers.map((answer, index) => {
+          const question = testQuestions[index];
+          if (!question.isObjective && answer !== null && answer.trim() !== '') {
+            return {
+              question: question.question,
+              answer: answer,
+              index: index
+            };
+          }
+          return null;
+        }).filter(item => item !== null);
 
-    const totalQuestions = testQuestions.length;
-    const score = Math.round((correctAnswers / totalQuestions) * 100);
-    
-    const results = {
-      score,
-      correctAnswers,
-      totalQuestions,
-      timeUsed: 3600 - timeLeft, // 사용한 시간 (초)
-      answers: userAnswers.map((answer, index) => ({
-        question: testQuestions[index].question,
-        userAnswer: answer !== null ? ['A', 'B', 'C', 'D'][answer] : '미답변',
-        correctAnswer: testQuestions[index].correctAnswer,
-        isCorrect: answer === ['A', 'B', 'C', 'D'].indexOf(testQuestions[index].correctAnswer)
-      }))
+        if (subjectiveAnswers.length > 0) {
+          const response = await fetch('http://localhost:5000/api/evaluate-subjective-answers', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              answers: subjectiveAnswers
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error('주관식 답변 평가에 실패했습니다.');
+          }
+
+          const evaluationResults = await response.json();
+          
+          // 평가 결과를 기존 답변에 반영
+          const updatedAnswers = userAnswers.map((answer, index) => {
+            const question = testQuestions[index];
+            if (!question.isObjective && answer !== null && answer.trim() !== '') {
+              const evaluation = evaluationResults.find(e => e.index === index);
+              if (evaluation) {
+                return {
+                  text: answer,
+                  isCorrect: evaluation.isCorrect,
+                  feedback: evaluation.feedback
+                };
+              }
+            }
+            return answer;
+          });
+
+          setUserAnswers(updatedAnswers);
+
+          // 결과 계산
+          const correctAnswers = updatedAnswers.filter((answer, index) => {
+            const question = testQuestions[index];
+            if (question.isObjective) {
+              return question.options[answer] === question.correctAnswer;
+            } else {
+              return answer && answer.isCorrect;
+            }
+          }).length;
+
+          const totalQuestions = testQuestions.length;
+          const score = Math.round((correctAnswers / totalQuestions) * 100);
+
+          const results = {
+            score,
+            correctAnswers,
+            totalQuestions,
+            timeUsed: 3600 - timeLeft,
+            answers: updatedAnswers.map((answer, index) => {
+              const question = testQuestions[index];
+              return {
+                question: question.question,
+                userAnswer: question.isObjective 
+                  ? (answer !== null ? ['A', 'B', 'C', 'D'][answer] : '미답변')
+                  : (answer && answer.text ? answer.text : '미답변'),
+                correctAnswer: question.correctAnswer,
+                isCorrect: question.isObjective
+                  ? question.options[answer] === question.correctAnswer
+                  : (answer && answer.isCorrect)
+              };
+            })
+          };
+
+          setTestResults(results);
+          setShowResults(true);
+        }
+      } catch (error) {
+        console.error('주관식 답변 평가 중 오류:', error);
+        alert('주관식 답변 평가 중 오류가 발생했습니다.');
+      } finally {
+        setIsLoading(false);
+      }
     };
 
-    setTestResults(results);
-    setShowResults(true);
-    setIsLoading(false);
+    evaluateSubjectiveAnswers();
   }, [userAnswers, testQuestions, timeLeft]);
 
   // 타이머 효과
@@ -192,7 +266,7 @@ function MockTest() {
   const handleConfirmStart = async () => {
     setOpenStartDialog(false);
     setIsLoading(true);
-    
+    setShowLoadingDialog(true);
     try {
       const response = await fetch('http://localhost:5000/api/generate-test-questions', {
         method: 'POST',
@@ -221,13 +295,16 @@ function MockTest() {
       setTestQuestions(data.questions);
       setIsTestStarted(true);
       setUserAnswers(new Array(data.questions.length).fill(null));
-      setTimeLeft(3600);
+      setTimeLeft(3600); // 60분
+      // 테스트 시작 상태 App에 알림
+      window.dispatchEvent(new CustomEvent('updateLearningState', { detail: { isTesting: true } }));
     } catch (error) {
       console.error('Error:', error);
       alert(`테스트 문제 생성 중 오류가 발생했습니다: ${error.message}`);
       setIsTestStarted(false);
     } finally {
       setIsLoading(false);
+      setShowLoadingDialog(false);
     }
   };
 
@@ -239,6 +316,24 @@ function MockTest() {
     if (currentQuestion < testQuestions.length - 1) {
       setCurrentQuestion(currentQuestion + 1);
     } else {
+      // 마지막 문제인 경우 바로 결과 처리
+      handleTestComplete();
+    }
+  };
+
+  // 주관식 답변 제출 핸들러 추가
+  const handleSubjectiveAnswerSubmit = (answer) => {
+    const newAnswers = [...userAnswers];
+    newAnswers[currentQuestion] = answer;
+    setUserAnswers(newAnswers);
+  };
+
+  // 다음 문제로 넘어가는 핸들러 추가
+  const handleNextQuestion = () => {
+    if (currentQuestion < testQuestions.length - 1) {
+      setCurrentQuestion(currentQuestion + 1);
+    } else {
+      // 마지막 문제인 경우 바로 결과 처리
       handleTestComplete();
     }
   };
@@ -254,7 +349,72 @@ function MockTest() {
     setCustomKeyword(''); // 키워드 초기화
     setSelectedCategory(null); // 카테고리 초기화
     setCurrentTest(null); // 현재 테스트 초기화
+    navigate('/mock-test');
   };
+
+  // 페이지 이동 시 경고 메시지 표시
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (isTestStarted && !showResults) {
+        e.preventDefault();
+        e.returnValue = '테스트가 진행 중입니다. 정말로 나가시겠습니까?';
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [isTestStarted, showResults]);
+
+  if (isLoading) {
+    return (
+      <Box
+        sx={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: 'rgba(0, 0, 0, 0.9)',
+          backdropFilter: 'blur(8px)',
+          zIndex: 9999,
+        }}
+      >
+        <CircularProgress 
+          size={80} 
+          sx={{ 
+            color: 'primary.main',
+            mb: 3
+          }} 
+        />
+        <Typography 
+          variant="h5" 
+          sx={{ 
+            color: '#fff',
+            textAlign: 'center',
+            mb: 2
+          }}
+        >
+          {currentQuestion === testQuestions.length - 1 ? '결과 처리 중...' : '문제 생성 중...'}
+        </Typography>
+        <Typography 
+          variant="body1" 
+          sx={{ 
+            color: 'rgba(255, 255, 255, 0.7)',
+            textAlign: 'center'
+          }}
+        >
+          잠시만 기다려주세요
+        </Typography>
+      </Box>
+    );
+  }
 
   if (showResults && testResults) {
     return (
@@ -384,14 +544,13 @@ function MockTest() {
                     </Typography>
                     <Box sx={{ display: 'flex', gap: 2 }}>
                       <Chip
-                        label={`내 답변: ${result.userAnswer}`}
+                        label={result.isCorrect ? "정답" : "오답"}
                         color={result.isCorrect ? "success" : "error"}
-                        sx={{ fontWeight: 'bold' }}
-                      />
-                      <Chip
-                        label={`정답: ${result.correctAnswer}`}
-                        color="primary"
-                        sx={{ fontWeight: 'bold' }}
+                        sx={{ 
+                          fontWeight: 'bold',
+                          fontSize: '1rem',
+                          padding: '8px 16px'
+                        }}
                       />
                     </Box>
                   </Box>
@@ -434,142 +593,131 @@ function MockTest() {
           overflow: 'hidden'
         }}>
           <CardContent sx={{ p: 4 }}>
-            {isLoading ? (
-              <Box sx={{ 
-                display: 'flex', 
-                flexDirection: 'column',
-                alignItems: 'center', 
-                justifyContent: 'center',
-                minHeight: '300px',
-                gap: 2
-              }}>
-                <CircularProgress sx={{ color: 'primary.main' }} />
-                <Typography variant="h6" sx={{ color: '#fff' }}>
-                  {currentQuestion === testQuestions.length - 1 ? '결과 처리 중...' : '문제 생성 중...'}
-                </Typography>
-              </Box>
-            ) : (
-              <>
-                <Box sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  mb: 3,
-                  gap: 2
-                }}>
-                  <Chip
-                    label={currentTest?.title}
-                    sx={{
-                      backgroundColor: currentTest?.color,
-                      color: '#fff',
-                      fontWeight: 'bold',
-                      fontSize: '1rem',
-                      padding: '20px 10px'
-                    }}
-                  />
-                  <Typography variant="h5" component="h2" sx={{ 
-                    color: '#fff',
-                    fontWeight: 'bold',
-                    flex: 1
-                  }}>
-                    문제 {currentQuestion + 1}/{testQuestions.length}
-                  </Typography>
-                  <Box sx={{
-                    backgroundColor: 'rgba(0, 0, 0, 0.2)',
-                    padding: '10px 20px',
-                    borderRadius: '20px',
-                    border: '1px solid rgba(255, 255, 255, 0.1)'
-                  }}>
-                    <Typography variant="h6" sx={{ 
-                      color: timeLeft <= 300 ? '#ff4444' : '#fff',
-                      fontWeight: 'bold',
-                      fontFamily: 'monospace'
-                    }}>
-                      {formatTime(timeLeft)}
-                    </Typography>
-                  </Box>
-                </Box>
+            <Box sx={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              mb: 4
+            }}>
+              <Typography variant="h5" sx={{ color: '#fff' }}>
+                문제 {currentQuestion + 1}/{testQuestions.length}
+              </Typography>
+              <Typography variant="h5" sx={{ color: '#fff' }}>
+                남은 시간: {formatTime(timeLeft)}
+              </Typography>
+            </Box>
 
-                <Box sx={{
-                  background: 'rgba(0, 0, 0, 0.2)',
-                  borderRadius: '12px',
-                  p: 3,
-                  mb: 4,
-                  border: '1px solid rgba(255, 255, 255, 0.1)'
-                }}>
-                  <Typography variant="body1" sx={{ 
-                    color: '#fff', 
-                    whiteSpace: 'pre-line', 
-                    fontSize: '1.1rem',
-                    lineHeight: 1.6
-                  }}>
-                    {testQuestions[currentQuestion].question}
-                  </Typography>
-                </Box>
+            <Box sx={{
+              background: 'rgba(0, 0, 0, 0.2)',
+              borderRadius: '12px',
+              p: 3,
+              mb: 4,
+              border: '1px solid rgba(255, 255, 255, 0.1)'
+            }}>
+              <ReactMarkdown
+                children={testQuestions[currentQuestion].question}
+                components={{
+                  code({node, inline, className, children, ...props}) {
+                    return !inline ? (
+                      <pre style={{ background: '#222', color: '#fff', padding: '10px', borderRadius: '8px', overflowX: 'auto' }}>
+                        <code>{children}</code>
+                      </pre>
+                    ) : (
+                      <code style={{ background: '#eee', borderRadius: '4px', padding: '2px 4px' }}>{children}</code>
+                    );
+                  }
+                }}
+              />
+            </Box>
 
-                <Grid container spacing={2}>
-                  {testQuestions[currentQuestion].options.map((option, index) => (
-                    <Grid item xs={12} key={index}>
-                      <Button
-                        fullWidth
-                        variant={userAnswers[currentQuestion] === index ? "contained" : "outlined"}
-                        onClick={() => handleAnswerSubmit(index)}
-                        sx={{
-                          padding: '16px',
-                          borderRadius: '12px',
-                          borderColor: 'rgba(255, 255, 255, 0.23)',
-                          color: '#fff',
-                          textAlign: 'left',
-                          justifyContent: 'flex-start',
+            {testQuestions[currentQuestion].isObjective ? (
+              // 객관식 문제 UI
+              <Grid container spacing={2}>
+                {['A', 'B', 'C', 'D'].map((option, index) => (
+                  <Grid item xs={12} key={option}>
+                    <Button
+                      fullWidth
+                      variant={userAnswers[currentQuestion] === index ? "contained" : "outlined"}
+                      onClick={() => handleAnswerSubmit(index)}
+                      sx={{
+                        justifyContent: 'flex-start',
+                        padding: '12px 20px',
+                        borderRadius: '8px',
+                        borderColor: 'rgba(255, 255, 255, 0.3)',
+                        color: '#fff',
+                        '&:hover': {
+                          borderColor: 'primary.main',
+                          backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                        },
+                        '&.MuiButton-contained': {
+                          backgroundColor: 'primary.main',
                           '&:hover': {
-                            borderColor: 'primary.main',
-                            backgroundColor: 'rgba(0, 180, 216, 0.1)',
+                            backgroundColor: 'primary.dark',
                           },
-                          ...(userAnswers[currentQuestion] === index && {
-                            backgroundColor: 'primary.main',
-                            '&:hover': {
-                              backgroundColor: 'primary.dark',
-                            }
-                          })
-                        }}
-                      >
-                        {option}
-                      </Button>
-                    </Grid>
-                  ))}
-                </Grid>
-
-                <Box sx={{ 
-                  display: 'flex', 
-                  gap: 2,
-                  justifyContent: 'center',
-                  mt: 4
-                }}>
-                  <Button
-                    variant="outlined"
-                    onClick={() => {
-                      setIsTestStarted(false);
-                      setCurrentQuestion(0);
-                      setUserAnswers([]);
-                      setTestQuestions([]);
-                    }}
-                    sx={{
-                      borderColor: 'rgba(255, 255, 255, 0.23)',
+                        },
+                      }}
+                    >
+                      <Typography sx={{ fontWeight: 'bold', mr: 2 }}>{option}.</Typography>
+                      <Typography>{testQuestions[currentQuestion].options[index]}</Typography>
+                    </Button>
+                  </Grid>
+                ))}
+              </Grid>
+            ) : (
+              // 주관식 문제 UI
+              <Box>
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={4}
+                  value={userAnswers[currentQuestion] || ''}
+                  onChange={(e) => handleSubjectiveAnswerSubmit(e.target.value)}
+                  placeholder="답변을 입력해주세요"
+                  sx={{
+                    mb: 4,
+                    '& .MuiOutlinedInput-root': {
                       color: '#fff',
-                      padding: '12px 30px',
-                      borderRadius: '25px',
-                      fontSize: '1.1rem',
-                      fontWeight: 'bold',
-                      minWidth: '150px',
-                      '&:hover': {
-                        borderColor: 'primary.main',
-                        backgroundColor: 'rgba(0, 180, 216, 0.1)',
+                      background: 'rgba(0, 0, 0, 0.2)',
+                      borderRadius: '12px',
+                      '& fieldset': {
+                        borderColor: 'rgba(255, 255, 255, 0.23)',
                       },
-                    }}
-                  >
-                    테스트 중단
-                  </Button>
-                </Box>
-              </>
+                      '&:hover fieldset': {
+                        borderColor: 'primary.main',
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: 'primary.main',  
+                      },
+                    },
+                    '& .MuiInputLabel-root': {
+                      color: 'rgba(255, 255, 255, 0.7)',
+                    },
+                    '& .MuiInputLabel-root.Mui-focused': {
+                      color: 'primary.main',
+                    },
+                  }}
+                />
+                <Button
+                  fullWidth
+                  variant="contained"
+                  onClick={handleNextQuestion}
+                  sx={{
+                    background: 'linear-gradient(45deg, #00b4d8 30%, #0096c7 90%)',
+                    color: 'white',
+                    padding: '12px 30px',
+                    borderRadius: '25px',
+                    fontSize: '1.1rem',
+                    fontWeight: 'bold',
+                    '&:hover': {
+                      background: 'linear-gradient(45deg, #0096c7 30%, #00b4d8 90%)',
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 5px 15px rgba(0, 180, 216, 0.3)',
+                    },
+                  }}
+                >
+                  다음 문제
+                </Button>
+              </Box>
             )}
           </CardContent>
         </Card>
@@ -580,66 +728,100 @@ function MockTest() {
   return (
     <Box sx={{ 
       minHeight: '100vh',
+      position: 'relative',
       background: '#000000',
-      pt: 4,
-      pb: 8,
+      overflow: 'hidden',
     }}>
-      <Container maxWidth="lg">
-        <Typography
-          variant="h4"
-          component="h1"
-          sx={{
-            color: 'primary.main',
-            mb: 4,
-            textAlign: 'center',
-            fontWeight: 'bold',
-          }}
-        >
-          모의 테스트
+      <Container maxWidth="md" sx={{ mt: 8 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
+          <Typography variant="h4" component="h1" gutterBottom align="center" color="primary.main" sx={{ flex: 1 }}>
+            테스트 선택
+          </Typography>
+        </Box>
+        <Typography variant="body1" align="center" color="text.secondary" paragraph>
+          원하는 테스트를 선택해주세요.
         </Typography>
 
-        <Grid container spacing={4}>
+        <Grid container spacing={3}>
           {mockTests.map((test) => (
-            <Grid item xs={12} md={6} key={test.id}>
+            <Grid item xs={12} sm={6} md={4} key={test.id}>
               <Card
                 sx={{
-                  background: 'rgba(17, 24, 39, 0.8)',
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  background: 'rgba(255, 255, 255, 0.1)',
                   backdropFilter: 'blur(10px)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  transition: 'all 0.3s ease',
+                  borderRadius: '20px',
+                  boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+                  border: '1px solid rgba(255, 255, 255, 0.18)',
+                  transition: 'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out',
                   '&:hover': {
                     transform: 'translateY(-5px)',
-                    boxShadow: '0 10px 30px rgba(0, 180, 216, 0.2)',
-                    borderColor: 'rgba(0, 180, 216, 0.3)',
+                    boxShadow: '0 12px 40px 0 rgba(31, 38, 135, 0.5)',
                   },
                 }}
               >
-                <CardContent>
-                  <Typography variant="h5" component="h2" sx={{ mb: 2, color: 'primary.main' }}>
+                <CardContent sx={{ 
+                  flexGrow: 1, 
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  p: 3
+                }}>
+                  <Box sx={{ mb: 2 }}>
+                    <Chip
+                      label={test.difficulty}
+                      sx={{
+                        backgroundColor: test.color,
+                        color: '#fff',
+                        fontWeight: 'bold',
+                        fontSize: '0.9rem',
+                        padding: '8px 16px'
+                      }}
+                    />
+                  </Box>
+                  <Typography variant="h5" component="h2" sx={{ 
+                    color: '#fff',
+                    fontWeight: 'bold',
+                    mb: 2
+                  }}>
                     {test.title}
                   </Typography>
-                  <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+                  <Typography variant="body1" sx={{ 
+                    color: 'rgba(255, 255, 255, 0.7)',
+                    mb: 3,
+                    flexGrow: 1
+                  }}>
                     {test.description}
                   </Typography>
-                  <Box sx={{ mb: 2 }}>
-                    <Typography variant="body2" color="text.secondary">
+                  <Box sx={{ 
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    mb: 2
+                  }}>
+                    <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
                       소요 시간: {test.duration}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
                       문제 수: {test.questions}문제
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      난이도: {test.difficulty}
                     </Typography>
                   </Box>
                   <Button
-                    variant="contained"
                     fullWidth
+                    variant="contained"
                     onClick={() => handleStartTest(test)}
                     sx={{
                       background: `linear-gradient(45deg, ${test.color} 30%, ${test.color}99 90%)`,
+                      color: 'white',
+                      padding: '12px 30px',
+                      borderRadius: '25px',
+                      fontSize: '1.1rem',
+                      fontWeight: 'bold',
                       '&:hover': {
                         background: `linear-gradient(45deg, ${test.color}99 30%, ${test.color} 90%)`,
+                        transform: 'translateY(-2px)',
+                        boxShadow: `0 5px 15px ${test.color}40`,
                       },
                     }}
                   >
@@ -1013,6 +1195,30 @@ function MockTest() {
               취소
             </Button>
           </DialogActions>
+        </Dialog>
+
+        {/* Loading Dialog */}
+        <Dialog
+          open={showLoadingDialog}
+          PaperProps={{
+            sx: {
+              background: 'rgba(30, 41, 59, 0.95)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '16px',
+              minWidth: '300px',
+            }
+          }}
+        >
+          <DialogContent sx={{ textAlign: 'center', py: 4 }}>
+            <CircularProgress size={60} sx={{ mb: 2 }} />
+            <Typography variant="h6" color="primary.main" sx={{ mb: 1 }}>
+              테스트 문제 생성 중...
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              잠시만 기다려주세요.
+            </Typography>
+          </DialogContent>
         </Dialog>
       </Container>
     </Box>
