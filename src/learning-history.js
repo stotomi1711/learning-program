@@ -14,9 +14,13 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from '@mui/material';
 import { ArrowBack as ArrowBackIcon, School as SchoolIcon, Timeline as TimelineIcon } from '@mui/icons-material';
 import { useUser } from './contexts/UserContext';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
 const API_URL = 'http://localhost:5000/api';
 
@@ -50,12 +54,11 @@ function LearningHistory() {
     }
   }, [user]);
 
-  const fetchTestHistory = useCallback(async (profileId) => {
+  const fetchTestHistory = useCallback(async () => {
     if (!user?.userId) return;
-    
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/test-history?userId=${user.userId}&profileId=${profileId}`);
+      const response = await fetch(`${API_URL}/test-history?userId=${user.userId}`);
       if (!response.ok) {
         throw new Error('테스트 기록을 불러오는데 실패했습니다.');
       }
@@ -100,7 +103,7 @@ function LearningHistory() {
     if (selectedMode === 'learning') {
       fetchLearningHistory(profileId);
     } else if (selectedMode === 'test') {
-      fetchTestHistory(profileId);
+      fetchTestHistory();
     }
   }, [selectedMode, fetchLearningHistory, fetchTestHistory]);
 
@@ -110,8 +113,10 @@ function LearningHistory() {
       if (mode === 'learning') {
         fetchLearningHistory(selectedProfile);
       } else if (mode === 'test') {
-        fetchTestHistory(selectedProfile);
+        fetchTestHistory();
       }
+    } else if (mode === 'test') {
+      fetchTestHistory();
     }
   };
 
@@ -272,7 +277,7 @@ function LearningHistory() {
         renderModeSelection()
       ) : (
         <>
-          {!isLoading && !error && profiles.length > 0 && (
+          {!isLoading && !error && profiles.length > 0 && selectedMode === 'learning' && (
             <Box sx={{ mb: 4, display: 'flex', justifyContent: 'center', gap: 2 }}>
               <FormControl sx={{ minWidth: 200, background: 'rgba(255, 255, 255, 0.1)', borderRadius: 1 }}>
                 <InputLabel sx={{ color: '#fff' }}>프로필 선택</InputLabel>
@@ -477,98 +482,79 @@ function LearningHistory() {
                     textAlign: 'center',
                   }}
                 >
-                  선택한 프로필의 테스트 기록이 없습니다
+                  테스트 기록이 없습니다
                 </Typography>
               </Box>
             ) : (
-              <Grid container spacing={3}>
-                {testHistory.map((record) => {
-                  const profile = profiles.find(p => p._id === record.profileId);
-                  return (
-                    <Grid item xs={12} key={record._id || record.id || Math.random()}>
-                      <Card
-                        sx={{
-                          background: 'rgba(255, 255, 255, 0.1)',
-                          backdropFilter: 'blur(10px)',
-                          borderRadius: '20px',
-                          boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
-                          border: '1px solid rgba(255, 255, 255, 0.18)',
-                          transition: 'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out',
-                          '&:hover': {
-                            transform: 'translateY(-5px)',
-                            boxShadow: '0 12px 40px 0 rgba(31, 38, 135, 0.5)',
-                          },
-                        }}
-                      >
-                        <CardContent>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                            <Typography
-                              variant="h6"
-                              sx={{
-                                color: '#fff',
-                                fontWeight: 'bold',
-                              }}
-                            >
-                              {record.createdAt ? new Date(record.createdAt).toLocaleDateString() : '날짜 없음'}
-                            </Typography>
-                            <Box sx={{ display: 'flex', gap: 1 }}>
-                              <Chip
-                                label={profile ? profile.name : '기본 프로필'}
-                                sx={{
-                                  backgroundColor: profile ? profile.color || '#4CAF50' : '#4CAF50',
-                                  color: '#fff',
-                                  fontWeight: 'bold',
-                                }}
-                              />
-                              <Chip
-                                label={`점수: ${record.score}점`}
-                                sx={{
-                                  backgroundColor: record.score >= 60 ? '#4CAF50' : '#F44336',
-                                  color: '#fff',
-                                  fontWeight: 'bold',
-                                }}
-                              />
-                            </Box>
-                          </Box>
-                          <Typography
-                            variant="h5"
-                            sx={{
-                              color: '#fff',
-                              fontWeight: 'bold',
-                              mb: 2,
-                            }}
-                          >
-                            {record.title || '테스트 제목 없음'}
-                          </Typography>
-                          <Typography
-                            variant="body1"
-                            sx={{
-                              color: 'rgba(255,255,255,0.7)',
-                              whiteSpace: 'pre-line',
-                              mb: 2,
-                            }}
-                          >
-                            {record.description || '테스트 설명 없음'}
-                          </Typography>
-                          {record.feedback && (
-                            <Box sx={{ mt: 2, p: 2, background: 'rgba(0, 180, 216, 0.1)', borderRadius: '8px' }}>
-                              <Typography
-                                variant="body1"
-                                sx={{
-                                  color: '#fff',
-                                  whiteSpace: 'pre-line',
-                                }}
-                              >
-                                {record.feedback}
-                              </Typography>
-                            </Box>
-                          )}
-                        </CardContent>
-                      </Card>
-                    </Grid>
-                  );
-                })}
-              </Grid>
+              (() => {
+                const grouped = testHistory.reduce((acc, record) => {
+                  const groupKey = `${record.keyword || '기타'} ${record.title || ''}`.trim();
+                  acc[groupKey] = acc[groupKey] || [];
+                  acc[groupKey].push(record);
+                  return acc;
+                }, {});
+                return (
+                  <Box>
+                    {Object.entries(grouped).map(([group, records]) => (
+                      <Accordion key={group} sx={{ mb: 2, background: 'rgba(255,255,255,0.05)' }}>
+                        <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ color: '#fff', fontWeight: 'bold' }}>
+                          {group} ({records.length}회)
+                        </AccordionSummary>
+                        <AccordionDetails>
+                          <Grid container spacing={2}>
+                            {records.map((record) => (
+                              <Grid item xs={12} key={record._id || record.id || Math.random()}>
+                                <Card
+                                  sx={{
+                                    background: 'rgba(255, 255, 255, 0.1)',
+                                    backdropFilter: 'blur(10px)',
+                                    borderRadius: '20px',
+                                    boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+                                    border: '1px solid rgba(255, 255, 255, 0.18)',
+                                    transition: 'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out',
+                                    '&:hover': {
+                                      transform: 'translateY(-5px)',
+                                      boxShadow: '0 12px 40px 0 rgba(31, 38, 135, 0.5)',
+                                    },
+                                  }}
+                                >
+                                  <CardContent>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                      <Typography
+                                        variant="h6"
+                                        sx={{ color: '#fff', fontWeight: 'bold' }}
+                                      >
+                                        {record.createdAt ? new Date(record.createdAt).toLocaleDateString() : '날짜 없음'}
+                                      </Typography>
+                                      <Chip
+                                        label={`점수: ${record.score}점`}
+                                        sx={{
+                                          backgroundColor: record.score >= 60 ? '#4CAF50' : '#F44336',
+                                          color: '#fff',
+                                          fontWeight: 'bold',
+                                        }}
+                                      />
+                                    </Box>
+                                    <Typography variant="h5" sx={{ color: '#fff', fontWeight: 'bold', mb: 2 }}>
+                                      {record.title || '테스트 제목 없음'}
+                                    </Typography>
+                                    <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.7)', mb: 1 }}>
+                                      <b>문제:</b> {record.question || '문제 없음'}
+                                    </Typography>
+                                    <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.7)' }}>
+                                      <b>내 답변:</b> {record.answer || '답변 없음'}
+                                    </Typography>
+                                  </CardContent>
+                                </Card>
+                              </Grid>
+                            ))}
+                          </Grid>
+                        </AccordionDetails>
+                      </Accordion>
+                    ))}
+                  </Box>
+                );
+              })()
             )
           )}
         </>

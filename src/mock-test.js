@@ -14,6 +14,7 @@ import {
   CircularProgress,
   Chip,
   TextField,
+  DialogContentText,
 } from '@mui/material';
 import { useUser } from './contexts/UserContext';
 import { useNavigate } from 'react-router-dom';
@@ -37,6 +38,7 @@ function MockTest() {
   const [showResults, setShowResults] = useState(false);
   const [testResults, setTestResults] = useState(null);
   const [showLoadingDialog, setShowLoadingDialog] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   const categories = [
     { 
@@ -91,6 +93,8 @@ function MockTest() {
           return null;
         }).filter(item => item !== null);
 
+        let updatedAnswers = [...userAnswers];
+
         if (subjectiveAnswers.length > 0) {
           const response = await fetch('http://localhost:5000/api/evaluate-subjective-answers', {
             method: 'POST',
@@ -109,7 +113,7 @@ function MockTest() {
           const evaluationResults = await response.json();
           
           // 평가 결과를 기존 답변에 반영
-          const updatedAnswers = userAnswers.map((answer, index) => {
+          updatedAnswers = userAnswers.map((answer, index) => {
             const question = testQuestions[index];
             if (!question.isObjective && answer !== null && answer.trim() !== '') {
               const evaluation = evaluationResults.find(e => e.index === index);
@@ -123,45 +127,43 @@ function MockTest() {
             }
             return answer;
           });
-
-          setUserAnswers(updatedAnswers);
-
-          // 결과 계산
-          const correctAnswers = updatedAnswers.filter((answer, index) => {
-            const question = testQuestions[index];
-            if (question.isObjective) {
-              return question.options[answer] === question.correctAnswer;
-            } else {
-              return answer && answer.isCorrect;
-            }
-          }).length;
-
-          const totalQuestions = testQuestions.length;
-          const score = Math.round((correctAnswers / totalQuestions) * 100);
-
-          const results = {
-            score,
-            correctAnswers,
-            totalQuestions,
-            timeUsed: 3600 - timeLeft,
-            answers: updatedAnswers.map((answer, index) => {
-              const question = testQuestions[index];
-              return {
-                question: question.question,
-                userAnswer: question.isObjective 
-                  ? (answer !== null ? ['A', 'B', 'C', 'D'][answer] : '미답변')
-                  : (answer && answer.text ? answer.text : '미답변'),
-                correctAnswer: question.correctAnswer,
-                isCorrect: question.isObjective
-                  ? question.options[answer] === question.correctAnswer
-                  : (answer && answer.isCorrect)
-              };
-            })
-          };
-
-          setTestResults(results);
-          setShowResults(true);
         }
+
+        // 결과 계산
+        const correctAnswers = updatedAnswers.filter((answer, index) => {
+          const question = testQuestions[index];
+          if (question.isObjective) {
+            return question.options[answer] === question.correctAnswer;
+          } else {
+            return answer && answer.isCorrect;
+          }
+        }).length;
+
+        const totalQuestions = testQuestions.length;
+        const score = Math.round((correctAnswers / totalQuestions) * 100);
+
+        const results = {
+          score,
+          correctAnswers,
+          totalQuestions,
+          timeUsed: 3600 - timeLeft,
+          answers: updatedAnswers.map((answer, index) => {
+            const question = testQuestions[index];
+            return {
+              question: question.question,
+              userAnswer: question.isObjective 
+                ? (answer !== null ? ['A', 'B', 'C', 'D'][answer] : '미답변')
+                : (answer && answer.text ? answer.text : '미답변'),
+              correctAnswer: question.correctAnswer,
+              isCorrect: question.isObjective
+                ? question.options[answer] === question.correctAnswer
+                : (answer && answer.isCorrect)
+            };
+          })
+        };
+
+        setTestResults(results);
+        setShowResults(true);
       } catch (error) {
         console.error('주관식 답변 평가 중 오류:', error);
         alert('주관식 답변 평가 중 오류가 발생했습니다.');
@@ -333,9 +335,14 @@ function MockTest() {
     if (currentQuestion < testQuestions.length - 1) {
       setCurrentQuestion(currentQuestion + 1);
     } else {
-      // 마지막 문제인 경우 바로 결과 처리
-      handleTestComplete();
+      // 마지막 문제인 경우 확인 대화상자 표시
+      setShowConfirmDialog(true);
     }
+  };
+
+  const handleConfirmComplete = () => {
+    setShowConfirmDialog(false);
+    handleTestComplete();
   };
 
   // 테스트 목록으로 돌아가기 버튼 클릭 시 모든 상태 초기화
@@ -702,25 +709,60 @@ function MockTest() {
                   variant="contained"
                   onClick={handleNextQuestion}
                   sx={{
-                    background: 'linear-gradient(45deg, #00b4d8 30%, #0096c7 90%)',
+                    background: currentQuestion === testQuestions.length - 1 
+                      ? 'linear-gradient(45deg, #f44336 30%, #d32f2f 90%)'
+                      : 'linear-gradient(45deg, #00b4d8 30%, #0096c7 90%)',
                     color: 'white',
                     padding: '12px 30px',
                     borderRadius: '25px',
                     fontSize: '1.1rem',
                     fontWeight: 'bold',
                     '&:hover': {
-                      background: 'linear-gradient(45deg, #0096c7 30%, #00b4d8 90%)',
+                      background: currentQuestion === testQuestions.length - 1
+                        ? 'linear-gradient(45deg, #d32f2f 30%, #f44336 90%)'
+                        : 'linear-gradient(45deg, #0096c7 30%, #00b4d8 90%)',
                       transform: 'translateY(-2px)',
-                      boxShadow: '0 5px 15px rgba(0, 180, 216, 0.3)',
+                      boxShadow: currentQuestion === testQuestions.length - 1
+                        ? '0 5px 15px rgba(244, 67, 54, 0.3)'
+                        : '0 5px 15px rgba(0, 180, 216, 0.3)',
                     },
                   }}
                 >
-                  다음 문제
+                  {currentQuestion === testQuestions.length - 1 ? '테스트 종료' : '다음 문제'}
                 </Button>
               </Box>
             )}
           </CardContent>
         </Card>
+
+        <Dialog
+          open={showConfirmDialog}
+          onClose={() => setShowConfirmDialog(false)}
+          PaperProps={{
+            sx: {
+              background: 'rgba(255, 255, 255, 0.1)',
+              backdropFilter: 'blur(10px)',
+              borderRadius: '20px',
+              border: '1px solid rgba(255, 255, 255, 0.18)',
+              color: '#fff'
+            }
+          }}
+        >
+          <DialogTitle>테스트 종료</DialogTitle>
+          <DialogContent>
+            <DialogContentText sx={{ color: '#fff' }}>
+              테스트를 종료하시겠습니까?
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setShowConfirmDialog(false)} sx={{ color: '#fff' }}>
+              취소
+            </Button>
+            <Button onClick={handleConfirmComplete} variant="contained" color="primary">
+              종료
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Container>
     );
   }

@@ -18,6 +18,7 @@ import {
 } from '@mui/material';
 import { useUser } from './contexts/UserContext';
 import { useNavigate, useLocation } from 'react-router-dom';
+import Editor from '@monaco-editor/react';
 
 function Learning() {
   const { user } = useUser();
@@ -33,8 +34,11 @@ function Learning() {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [selectedDifficulty, setSelectedDifficulty] = useState('초급');
   const [feedback, setFeedback] = useState(null);
+  const [output, setOutput] = useState('');
+  const [isLoadingCompile, setIsLoadingCompile] = useState(false);
   const [showLoadingDialog, setShowLoadingDialog] = useState(false);
   const navigate = useNavigate();
+  
 
   const languages = [
     { name: 'Python', color: '#3776AB' },
@@ -59,6 +63,28 @@ function Learning() {
     { level: '중급', color: '#FF9800' },
     { level: '상급', color: '#F44336' }
   ];
+
+  const languageMap = {
+    python: 71,
+    javascript: 63,
+    java: 62,
+    c: 50,
+    cpp: 54,
+    // 필요한 언어 추가
+  };
+
+  const getMonacoLanguage = (name) => {
+    switch (name.toLowerCase()) {
+      case 'python': return 'python';
+      case 'c': return 'c';
+      case 'c++': return 'cpp';
+      case 'c#': return 'csharp';
+      case 'java': return 'java';
+      case 'javascript': return 'javascript';
+      case 'php': return 'php';
+      default: return 'plaintext';
+    }
+  };
 
   useEffect(() => {
     // 이전 학습 기록이 있는 경우 해당 문제를 표시
@@ -153,7 +179,7 @@ function Learning() {
       return;
     }
 
-    setIsLoading(true);
+  setIsLoading(true);
     try {
       const response = await fetch('http://localhost:5000/api/submit-answer', {
         method: 'POST',
@@ -216,6 +242,39 @@ function Learning() {
     } finally {
       setIsLoading(false);
       setShowLoadingDialog(false);
+    }
+  };
+
+  const handleCompileCode = async () => {
+    if (!userAnswer.trim()) {
+      alert('코드를 입력해주세요.');
+      return;
+    }
+    setIsLoadingCompile(true);
+    const languageId = languageMap[selectedItem.name.toLowerCase()];
+    if (!languageId) {
+      alert('지원하지 않는 언어입니다.');
+      return;
+    }
+    
+    try {
+      const response = await fetch('http://localhost:5000/api/compile-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: userAnswer,
+          languageId: languageId,
+        }),
+      });
+
+      if (!response.ok) throw new Error('코드 실행에 실패했습니다.');
+
+      const data = await response.json();
+      setOutput(data.output || ''); 
+    } catch (error) {
+      alert(`컴파일 중 오류: ${error.message}`);
+    } finally {
+      setIsLoadingCompile(false);
     }
   };
 
@@ -297,47 +356,36 @@ function Learning() {
               </Typography>
             </Box>
 
-            <TextField
-              fullWidth
-              multiline
-              rows={4}
-              value={userAnswer}
-              onChange={(e) => setUserAnswer(e.target.value)}
-              placeholder="답변을 입력해주세요"
-              disabled={!!feedback}
-              sx={{
-                mb: 4,
-                '& .MuiOutlinedInput-root': {
-                  color: '#fff',
-                  background: 'rgba(0, 0, 0, 0.2)',
-                  borderRadius: '12px',
-                  '& fieldset': {
-                    borderColor: 'rgba(255, 255, 255, 0.23)',
-                  },
-                  '&:hover fieldset': {
-                    borderColor: 'primary.main',
-                  },
-                  '&.Mui-focused fieldset': {
-                    borderColor: 'primary.main',  
-                  },
-                  '&.Mui-disabled': {
-                    background: 'rgba(0, 0, 0, 0.3)',
-                    '& fieldset': {
-                      borderColor: 'rgba(255, 255, 255, 0.1)',
-                    },
-                  },
-                },
-                '& .MuiInputLabel-root': {
-                  color: 'rgba(255, 255, 255, 0.7)',
-                },
-                '& .MuiInputLabel-root.Mui-focused': {
-                  color: 'primary.main',
-                },
-                '& .MuiInputLabel-root.Mui-disabled': {
-                  color: 'rgba(255, 255, 255, 0.3)',
-                },
-              }}
-            />
+            <Box sx={{ p: 4 }}>
+                <Typography variant="h5" gutterBottom>
+                  코드 입력 및 실행 - {selectedItem.name}
+                </Typography>
+
+                <Editor
+                  height="300px"
+                  language={getMonacoLanguage(selectedItem.name)}
+                  value={userAnswer}
+                  onChange={(val) => setUserAnswer(val || '')}
+                  theme="vs-dark"
+                  options={{ minimap: { enabled: false }, fontSize: 14 }}
+                />
+
+                <Button
+                  variant="contained"
+                  onClick={handleCompileCode}
+                  sx={{ mt: 2 }}
+                  disabled={isLoadingCompile}
+                >
+                  {isLoadingCompile ? <CircularProgress size={20} /> : '컴파일 시작'}
+                </Button>
+
+                {output && (
+                  <Box sx={{ mt: 3, whiteSpace: 'pre-wrap', fontFamily: 'monospace', bgcolor: '#000', color: '#0f0', p: 2, borderRadius: 2 }}>
+                    <Typography variant="subtitle1">실행 결과</Typography>
+                    <div>{output}</div>
+                  </Box>
+                )}
+            </Box>
 
             {feedback && (
               <Box sx={{ 

@@ -5,7 +5,6 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const ReactMarkdown = require('react-markdown');
 
-
 const app = express();
 
 console.log('MONGO_URI:', process.env.MONGO_URI);
@@ -40,9 +39,19 @@ const profileSchema = new mongoose.Schema({
   userId: { type: String, required: true }, 
 });
 
+const testShema = new mongoose.Schema({
+  userId: { type: String, required: true },
+  title: { type: String, required: true },
+  question: { type: String, required: true },
+  answer: { type: String, required: true },
+  score: { type: Number, required: true },
+  createdAt: { type: Date, default: Date.now }
+});
+
 const User = mongoose.model('User', userSchema);
 const Question = mongoose.model('Question', questionSchema);
 const Profile = mongoose.model('Profile', profileSchema);
+const TestShema = mongoose.model('testShema', testShema);
 
 // 미들웨어 설정
 app.use(cors());
@@ -593,6 +602,76 @@ app.post('/api/evaluate-subjective-answers', async (req, res) => {
       error: "주관식 답변 평가 중 오류가 발생했습니다.",
       details: error.message 
     });
+  }
+});
+
+const JUDGE0_API_URL = 'https://judge0-ce.p.rapidapi.com/submissions';
+const RAPIDAPI_HOST = 'judge0-ce.p.rapidapi.com';
+const RAPIDAPI_KEY = '7cc39386femsh38807c9f3e133c1p115ff3jsnf675f018392e';
+
+app.post('/api/compile-code', async (req, res) => {
+  const { code, languageId } = req.body;
+
+  if (!code || !languageId) {
+    return res.status(400).json({ message: 'code와 languageId가 필요합니다.' });
+  }
+
+  try {
+    // 1. 코드 제출
+    const submitRes = await fetch(`${JUDGE0_API_URL}?base64_encoded=false&wait=true`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-RapidAPI-Host': RAPIDAPI_HOST,
+        'X-RapidAPI-Key': RAPIDAPI_KEY,
+      },
+      body: JSON.stringify({ source_code: code, language_id: languageId }),
+    });
+
+    const result = await submitRes.json();
+    console.log('Judge0 API 결과:', result);
+
+    if (result.status && result.status.id !== 3) {
+      // 컴파일 혹은 런타임 에러 발생
+      return res.json({
+        output: result.stderr || result.compile_output || result.message || 'Error occurred',
+        status: result.status.description,
+      });
+    }
+
+    res.json({ output: result.stdout || result.stderr || result.compile_output || 'No output' });
+  } catch (error) {
+    console.error('Judge0 호출 에러:', error);
+    res.status(500).json({ message: '코드 실행 중 오류 발생', error: error.message });
+  }
+});
+
+// 테스트 기록 조회 API
+app.get('/api/test-history', async (req, res) => {
+  const { userId } = req.query;
+  if (!userId) {
+    return res.status(400).json({ error: 'userId가 필요합니다.' });
+  }
+  try {
+    const testHistory = await TestShema.find({ userId });
+    res.json(testHistory);
+  } catch (error) {
+    res.status(500).json({ error: '서버 오류가 발생했습니다.' });
+  }
+});
+
+// 테스트 기록 저장 API
+app.post('/api/test-history', async (req, res) => {
+  const { userId, title, question, answer, score } = req.body;
+  if (!userId || !title || !question || !answer || score === undefined) {
+    return res.status(400).json({ error: '모든 필드를 입력해주세요.' });
+  }
+  try {
+    const newTest = new TestShema({ userId, title, question, answer, score });
+    await newTest.save();
+    res.status(201).json(newTest);
+  } catch (error) {
+    res.status(500).json({ error: '서버 오류가 발생했습니다.' });
   }
 });
 
