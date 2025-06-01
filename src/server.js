@@ -39,19 +39,23 @@ const profileSchema = new mongoose.Schema({
   userId: { type: String, required: true }, 
 });
 
-const testShema = new mongoose.Schema({
+const testSchema = new mongoose.Schema({
   userId: { type: String, required: true },
   title: { type: String, required: true },
-  question: { type: String, required: true },
-  answer: { type: String, required: true },
   score: { type: Number, required: true },
+  answers: [
+    {
+      question: String,
+      answer: String,
+    }
+  ],
   createdAt: { type: Date, default: Date.now }
 });
 
 const User = mongoose.model('User', userSchema);
 const Question = mongoose.model('Question', questionSchema);
 const Profile = mongoose.model('Profile', profileSchema);
-const TestShema = mongoose.model('testShema', testShema);
+const TestSchema = mongoose.model('testSchema', testSchema);
 
 // 미들웨어 설정
 app.use(cors());
@@ -650,28 +654,37 @@ app.post('/api/compile-code', async (req, res) => {
 app.get('/api/test-history', async (req, res) => {
   const { userId } = req.query;
   if (!userId) {
-    return res.status(400).json({ error: 'userId가 필요합니다.' });
+    return res.status(400).json({ success: false, error: 'userId 필요' });
   }
+
   try {
-    const testHistory = await TestShema.find({ userId });
-    res.json(testHistory);
+    const history = await TestSchema.find({ userId }).sort({ createdAt: -1 }).lean();
+    res.status(200).json(history);
   } catch (error) {
-    res.status(500).json({ error: '서버 오류가 발생했습니다.' });
+    console.error('테스트 기록 조회 오류:', error);
+    res.status(500).json({ success: false, error: '서버 오류' });
   }
 });
 
 // 테스트 기록 저장 API
-app.post('/api/test-history', async (req, res) => {
-  const { userId, title, question, answer, score } = req.body;
-  if (!userId || !title || !question || !answer || score === undefined) {
-    return res.status(400).json({ error: '모든 필드를 입력해주세요.' });
-  }
+app.post('/api/test-result', async (req, res) => {
   try {
-    const newTest = new TestShema({ userId, title, question, answer, score });
-    await newTest.save();
-    res.status(201).json(newTest);
-  } catch (error) {
-    res.status(500).json({ error: '서버 오류가 발생했습니다.' });
+    const { userId, title, answers, score } = req.body;
+
+    // answers를 배열로 가진 하나의 문서 생성
+    const newResult = new TestSchema({
+      userId,
+      title,
+      score,
+      answers, // 배열 자체를 저장
+    });
+
+    await newResult.save();
+
+    res.status(200).json({ success: true });
+  } catch (err) {
+    console.error('❌ 테스트 결과 저장 오류:', err);
+    res.status(500).json({ success: false, error: '저장 실패' });
   }
 });
 

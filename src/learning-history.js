@@ -57,20 +57,27 @@ function LearningHistory() {
   const fetchTestHistory = useCallback(async () => {
     if (!user?.userId) return;
     setIsLoading(true);
+    setError(null);
     try {
       const response = await fetch(`${API_URL}/test-history?userId=${user.userId}`);
       if (!response.ok) {
         throw new Error('테스트 기록을 불러오는데 실패했습니다.');
       }
       const data = await response.json();
+      console.log('Fetched test history:', data);
       setTestHistory(data);
-    } catch (error) {
-      console.error(error);
-      setError("테스트 기록 조회 중 오류가 발생했습니다.");
+    } catch (err) {
+      console.error(err);
+      setError(err.message);
     } finally {
       setIsLoading(false);
     }
-  }, [user]);
+  }, [user?.userId]);
+
+  useEffect(() => {
+    fetchTestHistory();
+  }, [fetchTestHistory]);
+
 
   const fetchProfiles = useCallback(async () => {
     if (!user?.userId) return;
@@ -538,12 +545,22 @@ function LearningHistory() {
                                     <Typography variant="h5" sx={{ color: '#fff', fontWeight: 'bold', mb: 2 }}>
                                       {record.title || '테스트 제목 없음'}
                                     </Typography>
-                                    <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.7)', mb: 1 }}>
-                                      <b>문제:</b> {record.question || '문제 없음'}
-                                    </Typography>
-                                    <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.7)' }}>
-                                      <b>내 답변:</b> {record.answer || '답변 없음'}
-                                    </Typography>
+                                    {record.answers && record.answers.length > 0 ? (
+                                      record.answers.map((item, idx) => (
+                                        <Box key={idx} sx={{ mb: 1 }}>
+                                          <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.7)', fontWeight: 'bold' }}>
+                                            문제: {item.question || '문제 없음'}
+                                          </Typography>
+                                          <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.7)', mb: 1 }}>
+                                            내 답변: {item.answer || '답변 없음'}
+                                          </Typography>
+                                        </Box>
+                                      ))
+                                    ) : (
+                                      <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.7)' }}>
+                                        답변 정보가 없습니다.
+                                      </Typography>
+                                    )}
                                   </CardContent>
                                 </Card>
                               </Grid>

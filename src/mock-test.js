@@ -164,6 +164,13 @@ function MockTest() {
 
         setTestResults(results);
         setShowResults(true);
+
+        if (user && user.id) {
+          const saveResponse = await saveTestResult(user.id, currentTest?.title || '테스트', results);
+          if (!saveResponse?.success) {
+            alert('결과 저장에 실패했습니다.');
+          }
+        }
       } catch (error) {
         console.error('주관식 답변 평가 중 오류:', error);
         alert('주관식 답변 평가 중 오류가 발생했습니다.');
@@ -173,7 +180,38 @@ function MockTest() {
     };
 
     evaluateSubjectiveAnswers();
-  }, [userAnswers, testQuestions, timeLeft]);
+  }, [userAnswers, testQuestions, timeLeft, user, currentTest]);
+
+  const saveTestResult = async (userId, title, results) => {
+    try {
+      const response = await fetch('http://localhost:5000/api/test-result', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          title,
+          score: results.score,
+          answers: results.answers.map(item => ({
+            question: item.question,
+            answer: item.userAnswer,
+          })),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('테스트 결과 저장에 실패했습니다.');
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('결과 저장 중 오류:', error);
+      alert('결과 저장 중 오류가 발생했습니다.');
+      return null;
+    }
+  };
 
   // 타이머 효과
   useEffect(() => {
@@ -564,23 +602,42 @@ function MockTest() {
                 ))}
               </Box>
 
-              <Button
-                variant="contained"
-                onClick={handleBackToList}
-                sx={{
-                  background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
-                  color: '#fff',
-                  padding: '12px 30px',
-                  borderRadius: '25px',
-                  fontSize: '1.1rem',
-                  fontWeight: 'bold',
-                  '&:hover': {
-                    background: 'linear-gradient(45deg, #1976D2 30%, #00BCD4 90%)',
-                  },
-                }}
-              >
-                테스트 목록으로 돌아가기
-              </Button>
+              <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
+                <Button
+                  variant="contained"
+                  onClick={() => navigate('/')}
+                  sx={{
+                    background: 'linear-gradient(45deg, #4CAF50 30%, #45a049 90%)',
+                    color: '#fff',
+                    padding: '12px 30px',
+                    borderRadius: '25px',
+                    fontSize: '1.1rem',
+                    fontWeight: 'bold',
+                    '&:hover': {
+                      background: 'linear-gradient(45deg, #45a049 30%, #4CAF50 90%)',
+                    },
+                  }}
+                >
+                  홈으로 돌아가기
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={handleBackToList}
+                  sx={{
+                    background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+                    color: '#fff',
+                    padding: '12px 30px',
+                    borderRadius: '25px',
+                    fontSize: '1.1rem',
+                    fontWeight: 'bold',
+                    '&:hover': {
+                      background: 'linear-gradient(45deg, #1976D2 30%, #00BCD4 90%)',
+                    },
+                  }}
+                >
+                  테스트 목록으로 돌아가기
+                </Button>
+              </Box>
             </Box>
           </CardContent>
         </Card>
