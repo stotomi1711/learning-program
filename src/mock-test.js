@@ -78,6 +78,38 @@ function MockTest() {
   const handleTestComplete = useCallback(() => {
     setIsLoading(true);
     
+    const saveTestResult = async (userId, title, results) => {
+      try {
+        const response = await fetch('http://localhost:5000/api/test-result', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId,
+            title,
+            score: results.score,
+            answers: results.answers.map(item => ({
+              question: item.question,
+              answer: item.userAnswer,
+            })),
+            keyword: customKeyword
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('테스트 결과 저장에 실패했습니다.');
+        }
+
+        const data = await response.json();
+        return data;
+      } catch (error) {
+        console.error('결과 저장 중 오류:', error);
+        alert('결과 저장 중 오류가 발생했습니다.');
+        return null;
+      }
+    };
+
     // 주관식 문제 답변 평가를 위한 API 호출
     const evaluateSubjectiveAnswers = async () => {
       try {
@@ -165,8 +197,8 @@ function MockTest() {
         setTestResults(results);
         setShowResults(true);
 
-        if (user && user.id) {
-          const saveResponse = await saveTestResult(user.id, currentTest?.title || '테스트', results);
+        if (user && user.userId) {
+          const saveResponse = await saveTestResult(user.userId, currentTest?.title || '테스트', results);
           if (!saveResponse?.success) {
             alert('결과 저장에 실패했습니다.');
           }
@@ -180,38 +212,7 @@ function MockTest() {
     };
 
     evaluateSubjectiveAnswers();
-  }, [userAnswers, testQuestions, timeLeft, user, currentTest]);
-
-  const saveTestResult = async (userId, title, results) => {
-    try {
-      const response = await fetch('http://localhost:5000/api/test-result', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId,
-          title,
-          score: results.score,
-          answers: results.answers.map(item => ({
-            question: item.question,
-            answer: item.userAnswer,
-          })),
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('테스트 결과 저장에 실패했습니다.');
-      }
-
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error('결과 저장 중 오류:', error);
-      alert('결과 저장 중 오류가 발생했습니다.');
-      return null;
-    }
-  };
+  }, [userAnswers, testQuestions, timeLeft, user, currentTest, customKeyword]);
 
   // 타이머 효과
   useEffect(() => {

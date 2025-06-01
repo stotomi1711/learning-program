@@ -493,85 +493,92 @@ function LearningHistory() {
                 </Typography>
               </Box>
             ) : (
-              (() => {
-                const grouped = testHistory.reduce((acc, record) => {
-                  const groupKey = `${record.keyword || '기타'} ${record.title || ''}`.trim();
-                  acc[groupKey] = acc[groupKey] || [];
-                  acc[groupKey].push(record);
-                  return acc;
-                }, {});
-                return (
-                  <Box>
-                    {Object.entries(grouped).map(([group, records]) => (
-                      <Accordion key={group} sx={{ mb: 2, background: 'rgba(255,255,255,0.05)' }}>
-                        <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ color: '#fff', fontWeight: 'bold' }}>
-                          {group} ({records.length}회)
-                        </AccordionSummary>
-                        <AccordionDetails>
-                          <Grid container spacing={2}>
-                            {records.map((record) => (
-                              <Grid item xs={12} key={record._id || record.id || Math.random()}>
-                                <Card
-                                  sx={{
-                                    background: 'rgba(255, 255, 255, 0.1)',
-                                    backdropFilter: 'blur(10px)',
-                                    borderRadius: '20px',
-                                    boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
-                                    border: '1px solid rgba(255, 255, 255, 0.18)',
-                                    transition: 'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out',
-                                    '&:hover': {
-                                      transform: 'translateY(-5px)',
-                                      boxShadow: '0 12px 40px 0 rgba(31, 38, 135, 0.5)',
-                                    },
-                                  }}
-                                >
-                                  <CardContent>
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                                      <Typography
-                                        variant="h6"
-                                        sx={{ color: '#fff', fontWeight: 'bold' }}
-                                      >
-                                        {record.createdAt ? new Date(record.createdAt).toLocaleDateString() : '날짜 없음'}
-                                      </Typography>
-                                      <Chip
-                                        label={`점수: ${record.score}점`}
-                                        sx={{
-                                          backgroundColor: record.score >= 60 ? '#4CAF50' : '#F44336',
-                                          color: '#fff',
-                                          fontWeight: 'bold',
-                                        }}
-                                      />
-                                    </Box>
-                                    <Typography variant="h5" sx={{ color: '#fff', fontWeight: 'bold', mb: 2 }}>
-                                      {record.title || '테스트 제목 없음'}
-                                    </Typography>
-                                    {record.answers && record.answers.length > 0 ? (
-                                      record.answers.map((item, idx) => (
-                                        <Box key={idx} sx={{ mb: 1 }}>
-                                          <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.7)', fontWeight: 'bold' }}>
-                                            문제: {item.question || '문제 없음'}
-                                          </Typography>
-                                          <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.7)', mb: 1 }}>
-                                            내 답변: {item.answer || '답변 없음'}
-                                          </Typography>
-                                        </Box>
-                                      ))
-                                    ) : (
-                                      <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.7)' }}>
-                                        답변 정보가 없습니다.
-                                      </Typography>
-                                    )}
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-                        </AccordionDetails>
-                      </Accordion>
-                    ))}
-                  </Box>
-                );
-              })()
+              <Box>
+                {testHistory.map((record, index) => (
+                  <Accordion 
+                    key={record._id || record.id || index}
+                    sx={{ 
+                      mb: 2, 
+                      background: 'rgba(255,255,255,0.05)',
+                      '&:before': {
+                        display: 'none',
+                      },
+                    }}
+                  >
+                    <AccordionSummary 
+                      expandIcon={<ExpandMoreIcon />} 
+                      sx={{ 
+                        color: '#fff',
+                        '&:hover': {
+                          background: 'rgba(255,255,255,0.05)',
+                        },
+                      }}
+                    >
+                      <Box sx={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center',
+                        width: '100%',
+                        pr: 2
+                      }}>
+                        <Box>
+                          <Typography variant="h6" sx={{ color: '#fff', fontWeight: 'bold' }}>
+                            {record.title || '테스트 제목 없음'}
+                          </Typography>
+                          <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)' }}>
+                            {record.createdAt ? new Date(record.createdAt).toLocaleDateString() : '날짜 없음'}
+                          </Typography>
+                        </Box>
+                        <Chip
+                          label={`점수: ${record.score}점`}
+                          sx={{
+                            backgroundColor: record.score >= 60 ? '#4CAF50' : '#F44336',
+                            color: '#fff',
+                            fontWeight: 'bold',
+                            fontSize: '1.1rem',
+                            padding: '8px 16px',
+                            mr: 1
+                          }}
+                        />
+                        <Chip
+                          label={record.keyword ? record.keyword : '키워드 없음'}
+                          sx={{
+                            backgroundColor: '#2196F3',
+                            color: '#fff',
+                            fontWeight: 'bold',
+                            fontSize: '1.1rem',
+                            padding: '8px 16px'
+                          }}
+                        />
+                      </Box>
+                    </AccordionSummary>
+                    <AccordionDetails sx={{ background: 'rgba(0,0,0,0.2)' }}>
+                      {record.answers && record.answers.length > 0 ? (
+                        record.answers.map((item, idx) => (
+                          <Box key={idx} sx={{ 
+                            mb: 2, 
+                            p: 2, 
+                            background: 'rgba(0, 0, 0, 0.2)', 
+                            borderRadius: '8px',
+                            border: '1px solid rgba(255, 255, 255, 0.1)'
+                          }}>
+                            <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.7)', fontWeight: 'bold', mb: 1 }}>
+                              문제 {idx + 1}: {item.question || '문제 없음'}
+                            </Typography>
+                            <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.7)' }}>
+                              내 답변: {item.answer || '답변 없음'}
+                            </Typography>
+                          </Box>
+                        ))
+                      ) : (
+                        <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.7)' }}>
+                          답변 정보가 없습니다.
+                        </Typography>
+                      )}
+                    </AccordionDetails>
+                  </Accordion>
+                ))}
+              </Box>
             )
           )}
         </>

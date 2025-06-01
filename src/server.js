@@ -49,6 +49,7 @@ const testSchema = new mongoose.Schema({
       answer: String,
     }
   ],
+  keyword: { type: String },
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -669,14 +670,14 @@ app.get('/api/test-history', async (req, res) => {
 // 테스트 기록 저장 API
 app.post('/api/test-result', async (req, res) => {
   try {
-    const { userId, title, answers, score } = req.body;
+    const { userId, title, answers, score, keyword } = req.body;
 
-    // answers를 배열로 가진 하나의 문서 생성
     const newResult = new TestSchema({
       userId,
       title,
       score,
-      answers, // 배열 자체를 저장
+      answers,
+      keyword
     });
 
     await newResult.save();

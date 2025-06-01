@@ -31,6 +31,7 @@ function Learning() {
   const [generatedQuestion, setGeneratedQuestion] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [userAnswer, setUserAnswer] = useState('');
+  const [codeAnswer, setCodeAnswer] = useState('');
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [selectedDifficulty, setSelectedDifficulty] = useState('초급');
   const [feedback, setFeedback] = useState(null);
@@ -246,7 +247,7 @@ function Learning() {
   };
 
   const handleCompileCode = async () => {
-    if (!userAnswer.trim()) {
+    if (!codeAnswer.trim()) {
       alert('코드를 입력해주세요.');
       return;
     }
@@ -262,7 +263,7 @@ function Learning() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          code: userAnswer,
+          code: codeAnswer,
           languageId: languageId,
         }),
       });
@@ -364,8 +365,8 @@ function Learning() {
                 <Editor
                   height="300px"
                   language={getMonacoLanguage(selectedItem.name)}
-                  value={userAnswer}
-                  onChange={(val) => setUserAnswer(val || '')}
+                  value={codeAnswer}
+                  onChange={(val) => setCodeAnswer(val || '')}
                   theme="vs-dark"
                   options={{ minimap: { enabled: false }, fontSize: 14 }}
                 />
@@ -385,6 +386,51 @@ function Learning() {
                     <div>{output}</div>
                   </Box>
                 )}
+            </Box>
+
+            <Box sx={{ p: 4 }}>
+                <Typography variant="h5" gutterBottom>
+                  답변 작성
+                </Typography>
+                <TextField
+                  multiline
+                  rows={6}
+                  fullWidth
+                  value={userAnswer}
+                  onChange={(e) => setUserAnswer(e.target.value)}
+                  placeholder="여기에 답변을 작성해주세요..."
+                  variant="outlined"
+                  disabled={!!feedback}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      color: 'white',
+                      '& fieldset': {
+                        borderColor: 'rgba(255, 255, 255, 0.23)',
+                      },
+                      '&:hover fieldset': {
+                        borderColor: 'primary.main',
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: 'primary.main',
+                      },
+                      '&.Mui-disabled': {
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        '& fieldset': {
+                          borderColor: 'rgba(255, 255, 255, 0.23)',
+                        },
+                      },
+                    },
+                    '& .MuiInputLabel-root': {
+                      color: 'rgba(255, 255, 255, 0.7)',
+                    },
+                    '& .MuiInputLabel-root.Mui-focused': {
+                      color: 'primary.main',
+                    },
+                    '& .MuiInputLabel-root.Mui-disabled': {
+                      color: 'rgba(255, 255, 255, 0.5)',
+                    },
+                  }}
+                />
             </Box>
 
             {feedback && (
