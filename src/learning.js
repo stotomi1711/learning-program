@@ -19,6 +19,7 @@ import {
 import { useUser } from './contexts/UserContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Editor from '@monaco-editor/react';
+import ReactMarkdown from 'react-markdown';
 
 function Learning() {
   const { user } = useUser();
@@ -236,7 +237,9 @@ function Learning() {
       }
       setGeneratedQuestion(data.question);
       setUserAnswer('');
-      setFeedback('');
+      setCodeAnswer('');
+      setFeedback(null);
+      setOutput('');
     } catch (error) {
       console.error('Error:', error);
       alert(`문제 생성 중 오류가 발생했습니다: ${error.message}`);
@@ -347,14 +350,42 @@ function Learning() {
               mb: 4,
               border: '1px solid rgba(255, 255, 255, 0.1)'
             }}>
-              <Typography variant="body1" sx={{ 
-                color: '#fff', 
-                whiteSpace: 'pre-line', 
-                fontSize: '1.1rem',
-                lineHeight: 1.6
-              }}>
+              <ReactMarkdown
+                components={{
+                  code: ({node, inline, className, children, ...props}) => {
+                    const match = /language-(\w+)/.exec(className || '');
+                    return !inline && match ? (
+                      <Box sx={{
+                        background: 'rgba(0, 0, 0, 0.3)',
+                        borderRadius: '8px',
+                        p: 2,
+                        mb: 2,
+                        overflowX: 'auto'
+                      }}>
+                        <Typography
+                          component="pre"
+                          sx={{
+                            color: '#fff',
+                            fontFamily: 'monospace',
+                            fontSize: '0.9rem',
+                            margin: 0,
+                            whiteSpace: 'pre-wrap'
+                          }}
+                          {...props}
+                        >
+                          {String(children).replace(/\n$/, '')}
+                        </Typography>
+                      </Box>
+                    ) : (
+                      <code className={className} {...props}>
+                        {children}
+                      </code>
+                    );
+                  }
+                }}
+              >
                 {generatedQuestion}
-              </Typography>
+              </ReactMarkdown>
             </Box>
 
             <Box sx={{ p: 4 }}>

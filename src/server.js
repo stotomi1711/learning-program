@@ -46,6 +46,7 @@ const testSchema = new mongoose.Schema({
   answers: [
     {
       question: String,
+      choices: [String],
       answer: String,
     }
   ],
@@ -346,6 +347,7 @@ app.post('/api/generate-question', async (req, res) => {
     문제는 하나만 생성해줘.
     문제는 명확하고 구체적이어야 하며, 학습자가 이해하기 쉽도록 작성해줘. 
     문제는 지문과 보기를 포함한 깔끔한 형식으로 출력해줘. 
+    코드는 markdown 형식으로 출력해줘.
     문제 형식은 아래와 같이 구성해줘(객관식이면 <보기>, 주관식이면 <보기>없이 문제만 생성해줘):
 
     문제:
@@ -574,8 +576,7 @@ app.post('/api/evaluate-subjective-answers', async (req, res) => {
 
   try {
     const evaluationResults = await Promise.all(answers.map(async (answer) => {
-      const prompt = `
-      다음 문제와 답변을 평가해주세요.
+      const prompt = `      다음 문제와 답변을 평가해주세요.
       답변이 문제의 핵심 내용을 포함하고 있다면 정답으로 처리해주세요.
       완벽하지 않더라도 핵심 내용이 포함되어 있다면 정답으로 처리해주세요.
       정확히 "정답" 또는 "오답"이라고만 답변해주세요.
@@ -671,6 +672,8 @@ app.get('/api/test-history', async (req, res) => {
 app.post('/api/test-result', async (req, res) => {
   try {
     const { userId, title, answers, score, keyword } = req.body;
+
+    console.log('📥 백엔드에서 받은 answers:', answers);
 
     const newResult = new TestSchema({
       userId,

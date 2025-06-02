@@ -91,6 +91,7 @@ function MockTest() {
             score: results.score,
             answers: results.answers.map(item => ({
               question: item.question,
+              choices: item.choices,
               answer: item.userAnswer,
             })),
             keyword: customKeyword
@@ -183,6 +184,7 @@ function MockTest() {
             const question = testQuestions[index];
             return {
               question: question.question,
+              choices: question.options || [], 
               userAnswer: question.isObjective 
                 ? (answer !== null ? ['A', 'B', 'C', 'D'][answer] : '미답변')
                 : (answer && answer.text ? answer.text : '미답변'),
@@ -194,10 +196,13 @@ function MockTest() {
           })
         };
 
+        console.log('✅ 최종 전송 results.answers:', results.answers);
+
         setTestResults(results);
         setShowResults(true);
 
         if (user && user.userId) {
+          console.log('🚀 서버에 보낼 answers 데이터:', results.answers);
           const saveResponse = await saveTestResult(user.userId, currentTest?.title || '테스트', results);
           if (!saveResponse?.success) {
             alert('결과 저장에 실패했습니다.');

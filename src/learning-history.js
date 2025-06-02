@@ -565,6 +565,20 @@ function LearningHistory() {
                             <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.7)', fontWeight: 'bold', mb: 1 }}>
                               문제 {idx + 1}: {item.question || '문제 없음'}
                             </Typography>
+                            {item.choices && item.choices.length > 0 && (
+                              <Box sx={{ mb: 1, pl: 2 }}>
+                                <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)', fontStyle: 'italic', mb: 0.5 }}>
+                                  보기:
+                                </Typography>
+                                <Box component="ul" sx={{ paddingLeft: 2, listStyle: 'none', margin: 0 }}>
+                                  {(item.choices || []).map((choice, i) => (
+                                    <li key={i} style={{ color: 'rgba(255,255,255,0.7)', marginBottom: '4px' }}>
+                                      <strong>{String.fromCharCode(65 + i)}.</strong> {choice}
+                                    </li>
+                                  ))}
+                                </Box>
+                              </Box>
+                            )}
                             <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.7)' }}>
                               내 답변: {item.answer || '답변 없음'}
                             </Typography>
