@@ -358,15 +358,25 @@ app.post('/api/generate-question', async (req, res) => {
     2. ...
     3. ...
     4. ...
+
+    정답:
+    (정답 내용)
     `;
     console.log('생성할 프롬프트:', prompt);
     
-    const question = await callGemini(prompt);
-    console.log('생성된 질문:', question);
+    const response = await callGemini(prompt);
+    console.log('생성된 응답:', response);
+
+    // 응답에서 문제와 정답 분리
+    const questionMatch = response.match(/문제:\s*([\s\S]*?)(?=객관식 보기:|정답:|$)/);
+    const answerMatch = response.match(/정답:\s*([\s\S]*?)$/);
+
+    const question = questionMatch ? questionMatch[1].trim() : response;
+    const answer = answerMatch ? answerMatch[1].trim() : '';
 
     if (!userId) {
       // userId가 없을 경우, 문제만 생성하고 저장하지 않음
-      return res.json({ question });
+      return res.json({ question, answer });
     }
 
     // 사용자의 프로필 조회
@@ -382,36 +392,42 @@ app.post('/api/generate-question', async (req, res) => {
       userId: userId || 'guest_' + Date.now(),
       keyword,
       question,
-      answer: "답변을 기다리는 중입니다.",
+      answer,
       feedback: "피드백을 기다리는 중입니다.",
-      profileId: selectedProfileId, // 프로필의 _id를 사용
+      profileId: selectedProfileId,
     });
 
     await newQuestion.save();
     console.log('DB에 저장 완료:', newQuestion);
 
-    res.json({ question });
+    res.json({ question, answer });
   } catch (error) {
     console.error('문제 생성 중 오류 발생:', error);
     res.status(500).json({ 
-      error: "서버에서 오류가 발생했습니다.",
+      error: "문제 생성 중 오류가 발생했습니다.",
       details: error.message 
     });
   }
 });
 
 app.post('/api/submit-answer', async (req, res) => {
-  const { userId, keyword, question, answer } = req.body;
+  const { userId, keyword, question, answer, correctAnswer } = req.body;
   
   try {
-    // Gemini API를 사용하여 답변 평가 및 피드백 생성
+    // 정답 여부 확인
+    const isCorrect = answer.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
+    
+    // Gemini API를 사용하여 해설 생성
     const prompt = `
-      다음은 학습자의 답변입니다. 이 답변을 평가하고 피드백을 제공해주세요.
+      다음은 학습자의 답변입니다. 이 답변에 대한 해설을 제공해주세요.
       
       키워드: ${keyword}
       질문: ${question}
-      답변: ${answer}
-      
+      정답: ${correctAnswer}
+      학습자 답변: ${answer}
+      정답 여부: ${isCorrect ? '정답' : '오답'}
+
+      깔끔한 형식으로 출력해줘.      
       다음 형식으로 피드백을 제공해주세요:
       1. 정답 여부 (정답 / 오답)
       2. 문제에 대한 정답
@@ -419,9 +435,16 @@ app.post('/api/submit-answer', async (req, res) => {
     `;
     
     const feedback = await callGemini(prompt);
+    
+    console.log('\n=== 생성된 해설 ===');
+    console.log(feedback);
+    console.log('===================\n');
 
     if (!userId) {
-      return res.json({ feedback });
+      return res.json({ 
+        isCorrect,
+        feedback 
+      });
     }
 
     const questionToUpdate = await Question.findOne({ userId, keyword, question });
@@ -433,7 +456,10 @@ app.post('/api/submit-answer', async (req, res) => {
     questionToUpdate.feedback = feedback;
     await questionToUpdate.save();
 
-    res.json({ feedback });
+    res.json({ 
+      isCorrect,
+      feedback 
+    });
   } catch (error) {
     console.error('답변 평가 중 오류 발생:', error);
     res.status(500).json({ 

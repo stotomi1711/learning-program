@@ -39,6 +39,7 @@ function Learning() {
   const [output, setOutput] = useState('');
   const [isLoadingCompile, setIsLoadingCompile] = useState(false);
   const [showLoadingDialog, setShowLoadingDialog] = useState(false);
+  const [correctAnswer, setCorrectAnswer] = useState('');
   const navigate = useNavigate();
   
 
@@ -156,6 +157,8 @@ function Learning() {
         throw new Error('생성된 문제가 없습니다.');
       }
       setGeneratedQuestion(data.question);
+      // 정답만 상태로 저장하되 UI에는 표시하지 않음
+      setCorrectAnswer(data.answer);
       setShowInfoDialog(false);
     } catch (error) {
       console.error('Error:', error);
@@ -181,7 +184,7 @@ function Learning() {
       return;
     }
 
-  setIsLoading(true);
+    setIsLoading(true);
     try {
       const response = await fetch('http://localhost:5000/api/submit-answer', {
         method: 'POST',
@@ -193,6 +196,7 @@ function Learning() {
           keyword: selectedItem?.name,
           question: generatedQuestion,
           answer: userAnswer,
+          correctAnswer: correctAnswer
         }),
       });
 
@@ -236,6 +240,8 @@ function Learning() {
         throw new Error('생성된 문제가 없습니다.');
       }
       setGeneratedQuestion(data.question);
+      // 정답만 상태로 저장하되 UI에는 표시하지 않음
+      setCorrectAnswer(data.answer);
       setUserAnswer('');
       setCodeAnswer('');
       setFeedback(null);
@@ -481,7 +487,7 @@ function Learning() {
                   alignItems: 'center',
                   gap: 1
                 }}>
-                  <span role="img" aria-label="feedback">💡</span> 피드백
+                  <span role="img" aria-label="feedback">💡</span> 해설
                 </Typography>
                 <Typography variant="body1" sx={{ 
                   color: '#fff', 
