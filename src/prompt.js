@@ -1,7 +1,6 @@
-// 프롬프트 템플릿 정의
+// 학습 문제 생성 프롬프트트
 const generateQuestionPrompt = (keyword, difficulty) => `
-${keyword}에 대한 ${difficulty}난이도의 주관식 or 객관식 문제를 만들어줘.
-문제는 주관식과 객관식이 다양하게 번갈아가며 생성되도록 해줘.
+${keyword}에 대한 ${difficulty}난이도의 주관식 문제를 만들어줘.
 문제는 하나만 생성해줘.
 문제는 명확하고 구체적이어야 하며, 학습자가 이해하기 쉽도록 작성해줘. 
 문제는 지문과 보기를 포함한 깔끔한 형식으로 출력해줘. 
@@ -11,16 +10,11 @@ ${keyword}에 대한 ${difficulty}난이도의 주관식 or 객관식 문제를 
 문제:
 (질문 내용)
 
-객관식 보기:
-1. ...
-2. ...
-3. ...
-4. ...
-
 정답:
 (정답 내용)
 `;
 
+// 학습 문제 답변 프롬프트트
 const generateFeedbackPrompt = (keyword, question, correctAnswer, answer, isCorrect) => `
 다음은 학습자의 답변입니다. 이 답변에 대한 해설을 제공해주세요.
 
@@ -37,6 +31,7 @@ const generateFeedbackPrompt = (keyword, question, correctAnswer, answer, isCorr
 3. 문제해설
 `;
 
+// 테스트 문제 생성 프롬프트트
 const generateMultipleQuestionsPrompt = (difficulty, keyword, category, isObjective) => `
 다음 조건에 맞는 문제를 생성해주세요:
 - 난이도: ${difficulty}
@@ -52,6 +47,8 @@ const generateMultipleQuestionsPrompt = (difficulty, keyword, category, isObject
 ${isObjective ? '객관식 보기:\n1. ...\n2. ...\n3. ...\n4. ...\n\n정답: (정답 번호)' : ''}
 `;
 
+
+// 테스트 주관식 문제 답변 프롬프트트
 const evaluateAnswerPrompt = (question, answer) => `
 다음 문제와 답변을 평가해주세요.
 답변이 문제의 핵심 내용을 포함하고 있다면 정답으로 처리해주세요.
