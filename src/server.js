@@ -742,9 +742,7 @@ app.post('/api/evaluate-subjective-answers', async (req, res) => {
   }
 });
 
-const JUDGE0_API_URL = 'https://judge0-ce.p.rapidapi.com/submissions';
 const RAPIDAPI_HOST = 'judge0-ce.p.rapidapi.com';
-const RAPIDAPI_KEY = '7cc39386femsh38807c9f3e133c1p115ff3jsnf675f018392e';
 
 app.post('/api/compile-code', async (req, res) => {
   const { code, languageId } = req.body;
@@ -755,12 +753,12 @@ app.post('/api/compile-code', async (req, res) => {
 
   try {
     // 1. 코드 제출
-    const submitRes = await fetch(`${JUDGE0_API_URL}?base64_encoded=false&wait=true`, {
+    const submitRes = await fetch(`${process.env.JUDGE0_API_URL}?base64_encoded=false&wait=true`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-RapidAPI-Host': RAPIDAPI_HOST,
-        'X-RapidAPI-Key': RAPIDAPI_KEY,
+        'X-RapidAPI-Key': process.env.GEMINI_API_KEY,
       },
       body: JSON.stringify({ source_code: code, language_id: languageId }),
     });
