@@ -296,7 +296,6 @@ app.get('/api/profiles/selected', (req, res) => {
 // 학습 기록 관련 API들
 const learningHistory = [];
 
-const GEMINI_API_KEY = "AIzaSyA2lvDVvZ5ZTiHYTTgh8_WXuLCKTq4fJ7A";
 
 async function callGemini(prompt) {
   const maxRetries = 3;
