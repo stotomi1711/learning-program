@@ -4,7 +4,7 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const ReactMarkdown = require('react-markdown');
-const { generateQuestionPrompt, generateFeedbackPrompt, generateMultipleQuestionsPrompt, evaluateAnswerPrompt } = require('./prompt');
+const { generateQuestionPrompt, generateFeedbackPrompt, generateMultipleQuestionsPrompt, evaluateAnswerPrompt, validateLearningQuestionPrompt, validateTestQuestionPrompt, validateObjectiveQuestionPrompt } = require('./prompt');
 
 const app = express();
 
@@ -296,45 +296,84 @@ app.get('/api/profiles/selected', (req, res) => {
 // 학습 기록 관련 API들
 const learningHistory = [];
 
-const GEMINI_API_KEY = "AIzaSyDOr27elrSqDqUEofpsGmvRnkbWR8Xgh_g";
+const GEMINI_API_KEY = "AIzaSyA2lvDVvZ5ZTiHYTTgh8_WXuLCKTq4fJ7A";
 
 async function callGemini(prompt) {
-  try {
-    console.log('Gemini API 호출 시작:', prompt);
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
-      {
+  const maxRetries = 3;
+  const baseDelay = 2000; // 2초
+
+  if (!process.env.GEMINI_API_KEY) {
+    throw new Error('GEMINI_API_KEY가 설정되지 않았습니다.');
+  }
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const response = await fetch('https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': process.env.GEMINI_API_KEY
+        },
         body: JSON.stringify({
-          contents: [
+          contents: [{
+            role: "user",
+            parts: [{
+              text: prompt
+            }]
+          }],
+          safetySettings: [
             {
-              parts: [{ text: prompt }]
+              category: "HARM_CATEGORY_HARASSMENT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_HATE_SPEECH",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
             }
-          ]
+          ],
+          generationConfig: {
+            temperature: 0.7,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 1024,
+            stopSequences: []
+          }
         })
-      }
-    );
-
-    console.log('Gemini API 응답 상태:', response.status);
-    console.log('Gemini API 응답 헤더:', response.headers);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Gemini API 호출 실패:', {
-        status: response.status,
-        statusText: response.statusText,
-        error: errorText
       });
-      throw new Error(`Gemini API 호출 실패: ${response.status} - ${response.statusText}`);
-    }
 
-    const data = await response.json();
-    console.log('Gemini API 응답 데이터:', data);
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || "결과 없음";
-  } catch (error) {
-    console.error('Gemini API 호출 중 예외 발생:', error);
-    throw error;
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('API 응답 오류:', errorData);
+        
+        if (response.status === 429) {
+          const delay = baseDelay * Math.pow(2, attempt);
+          console.log(`Rate limit 도달. ${delay/1000}초 후 재시도...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        throw new Error(`Gemini API 호출 실패: ${response.status} - ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
+        throw new Error('API 응답 형식이 올바르지 않습니다.');
+      }
+      return data.candidates[0].content.parts[0].text;
+    } catch (error) {
+      console.error(`API 호출 시도 ${attempt + 1} 실패:`, error);
+      if (attempt === maxRetries - 1) throw error;
+      const delay = baseDelay * Math.pow(2, attempt);
+      console.log(`API 호출 실패. ${delay/1000}초 후 재시도...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
   }
 }
 
@@ -343,22 +382,62 @@ app.post('/api/generate-question', async (req, res) => {
   console.log('문제 생성 요청:', { userId, keyword, difficulty });
   
   try {
-    const prompt = generateQuestionPrompt(keyword, difficulty);
-    console.log('생성할 프롬프트:', prompt);
-    
-    const response = await callGemini(prompt);
-    console.log('생성된 응답:', response);
+    let question, answer;
+    let isValid = false;
+    let validationFeedback = '';
+    let attempts = 0;
+    const maxAttempts = 3;
 
-    // 응답에서 문제와 정답 분리
-    const questionMatch = response.match(/문제:\s*([\s\S]*?)(?=객관식 보기:|정답:|$)/);
-    const answerMatch = response.match(/정답:\s*([\s\S]*?)$/);
+    while (!isValid && attempts < maxAttempts) {
+      console.log(`\n=== 문제 생성 시도 ${attempts + 1}/${maxAttempts} ===`);
+      
+      const prompt = generateQuestionPrompt(keyword, difficulty);
+      console.log('생성할 프롬프트:', prompt);
+      
+      const response = await callGemini(prompt);
+      console.log('생성된 응답:', response);
 
-    const question = questionMatch ? questionMatch[1].trim() : response;
-    const answer = answerMatch ? answerMatch[1].trim() : '';
+      // 응답에서 문제와 정답 분리
+      const questionMatch = response.match(/문제:\s*([\s\S]*?)(?=객관식 보기:|정답:|$)/);
+      const answerMatch = response.match(/정답:\s*([\s\S]*?)$/);
+
+      question = questionMatch ? questionMatch[1].trim() : response;
+      answer = answerMatch ? answerMatch[1].trim() : '';
+
+      // 학습 문제 검증
+      const validationPrompt = validateLearningQuestionPrompt(question, answer, difficulty, keyword);
+      const validationResult = await callGemini(validationPrompt);
+      
+      // 검증 결과 파싱
+      const resultMatch = validationResult.match(/최종 검증 결과:\s*\[?(통과|실패)\]?/);
+      isValid = resultMatch && resultMatch[1] === '통과';
+      validationFeedback = validationResult;
+
+      if (!isValid) {
+        console.log(`문제 검증 실패 (시도 ${attempts + 1}/${maxAttempts}):`, validationFeedback);
+        attempts++;
+        
+        // 마지막 시도가 아니면 잠시 대기
+        if (attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      } else {
+        console.log('문제 검증 통과!');
+        break;  // 검증 통과 시 즉시 루프 종료
+      }
+    }
+
+    if (!isValid) {
+      throw new Error('적절한 문제를 생성하지 못했습니다. 다시 시도해주세요.');
+    }
 
     if (!userId) {
-      // userId가 없을 경우, 문제만 생성하고 저장하지 않음
-      return res.json({ question, answer });
+      return res.json({ 
+        question, 
+        answer,
+        validationFeedback,
+        attempts: attempts + 1
+      });
     }
 
     // 사용자의 프로필 조회
@@ -377,12 +456,19 @@ app.post('/api/generate-question', async (req, res) => {
       answer,
       feedback: "피드백을 기다리는 중입니다.",
       profileId: selectedProfileId,
+      validationFeedback,
+      generationAttempts: attempts + 1
     });
 
     await newQuestion.save();
     console.log('DB에 저장 완료:', newQuestion);
 
-    res.json({ question, answer });
+    res.json({ 
+      question, 
+      answer,
+      validationFeedback,
+      attempts: attempts + 1
+    });
   } catch (error) {
     console.error('문제 생성 중 오류 발생:', error);
     res.status(500).json({ 
@@ -473,58 +559,120 @@ app.post('/api/generate-test-questions', async (req, res) => {
     const questions = [];
     let objectiveCount = 0;
     let subjectiveCount = 0;
-    const targetObjectiveCount = Math.floor(count * 0.7); // 70% 객관식
+    const targetObjectiveCount = 3;
+    const targetSubjectiveCount = 2;
+    const testMaxAttempts = 3;
 
-    for (let i = 0; i < count; i++) {
-      // 남은 문제 수에 따라 객관식/주관식 결정
-      const isObjective = objectiveCount < targetObjectiveCount;
-      
-      const prompt = generateMultipleQuestionsPrompt(difficulty, keyword, category, isObjective);
-
-      const question = await callGemini(prompt);
-      
-      // 문제 파싱
-      const questionText = question.split('객관식 보기:')[0].replace('문제:', '').trim();
+    // 총 5개 문제 생성 (객관식 3개, 주관식 2개)
+    while (objectiveCount < targetObjectiveCount || subjectiveCount < targetSubjectiveCount) {
+      let isValid = false;
+      let validationFeedback = '';
+      let attempts = 0;
+      let questionText = '';
       let options = [];
       let correctAnswer = '';
 
-      if (isObjective) {
-        const optionsText = question.split('객관식 보기:')[1]?.split('정답:')[0]?.trim() || '';
-        const correctAnswerText = question.split('정답:')[1]?.trim() || '';
+      // 아직 객관식 문제가 더 필요하면 객관식 생성, 아니면 주관식 생성
+      const isObjective = objectiveCount < targetObjectiveCount;
+
+      while (!isValid && attempts < testMaxAttempts) {
+        console.log(`\n=== ${isObjective ? '객관식' : '주관식'} 문제 생성 시도 ${attempts + 1}/${testMaxAttempts} ===`);
+        console.log(`현재 객관식 문제 수: ${objectiveCount}, 목표: ${targetObjectiveCount}`);
+        console.log(`현재 주관식 문제 수: ${subjectiveCount}, 목표: ${targetSubjectiveCount}`);
         
-        options = optionsText.split('\n')
-          .filter(line => line.trim().match(/^\d+\./))
-          .map(line => line.replace(/^\d+\./, '').trim());
+        const prompt = generateMultipleQuestionsPrompt(difficulty, keyword, category, isObjective);
+        const question = await callGemini(prompt);
         
-        // 보기가 4개가 아니면 다시 생성
-        if (options.length !== 4) {
-          i--; // 현재 반복을 다시 시도
-          continue;
+        questionText = question.split('객관식 보기:')[0].replace('문제:', '').trim();
+
+        if (isObjective) {
+          const optionsText = question.split('객관식 보기:')[1]?.split('정답:')[0]?.trim() || '';
+          const correctAnswerText = question.split('정답:')[1]?.trim() || '';
+          
+          options = optionsText.split('\n')
+            .filter(line => line.trim().match(/^\d+\./))
+            .map(line => line.replace(/^\d+\./, '').trim());
+          
+          if (options.length !== 4) {
+            console.log('보기가 4개가 아님, 재시도');
+            attempts++;
+            continue;
+          }
+          
+          const correctAnswerNumber = parseInt(correctAnswerText.match(/\d+/)?.[0]);
+          if (!correctAnswerNumber || correctAnswerNumber < 1 || correctAnswerNumber > 4) {
+            console.log('정답 번호가 유효하지 않음, 재시도');
+            attempts++;
+            continue;
+          }
+          
+          correctAnswer = options[correctAnswerNumber - 1];
+
+          // 객관식 문제 검증
+          const validationPrompt = validateObjectiveQuestionPrompt(
+            questionText,
+            options,
+            correctAnswer,
+            difficulty,
+            keyword
+          );
+          const validationResult = await callGemini(validationPrompt);
+          
+          // 검증 결과 파싱
+          const resultMatch = validationResult.match(/최종 검증 결과:\s*\[?(통과|실패)\]?/);
+          isValid = resultMatch && resultMatch[1] === '통과';
+          validationFeedback = validationResult;
+
+          if (isValid) {
+            objectiveCount++;
+            console.log('객관식 문제 검증 통과!');
+            console.log(`현재 객관식 문제 수: ${objectiveCount}`);
+            break;
+          }
+        } else {
+          // 주관식 문제 검증
+          const validationPrompt = validateTestQuestionPrompt(questionText, difficulty, keyword);
+          const validationResult = await callGemini(validationPrompt);
+          
+          // 검증 결과 파싱
+          const resultMatch = validationResult.match(/최종 검증 결과:\s*\[?(통과|실패)\]?/);
+          isValid = resultMatch && resultMatch[1] === '통과';
+          validationFeedback = validationResult;
+
+          if (isValid) {
+            subjectiveCount++;
+            console.log('주관식 문제 검증 통과!');
+            console.log(`현재 주관식 문제 수: ${subjectiveCount}`);
+            break;
+          }
         }
-        
-        // 정답 번호 추출 (1-4 사이의 숫자)
-        const correctAnswerNumber = parseInt(correctAnswerText.match(/\d+/)?.[0]);
-        if (!correctAnswerNumber || correctAnswerNumber < 1 || correctAnswerNumber > 4) {
-          i--; // 정답 번호가 유효하지 않으면 다시 생성
-          continue;
+
+        if (!isValid) {
+          console.log(`${isObjective ? '객관식' : '주관식'} 문제 검증 실패 (시도 ${attempts + 1}/${testMaxAttempts}):`, validationFeedback);
+          attempts++;
+          
+          if (attempts < testMaxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
         }
-        
-        correctAnswer = options[correctAnswerNumber - 1];
-        objectiveCount++;
-      } else {
-        subjectiveCount++;
       }
 
+      if (!isValid) {
+        throw new Error(`${isObjective ? '객관식' : '주관식'} 문제를 생성하지 못했습니다. 다시 시도해주세요.`);
+      }
+
+      // 검증 통과한 문제를 questions 배열에 추가
       questions.push({
         question: questionText,
-        isObjective,
+        isObjective: isObjective,
         options: isObjective ? options : [],
-        correctAnswer: isObjective ? correctAnswer : ''
+        correctAnswer: isObjective ? correctAnswer : null,
+        validationFeedback,
+        generationAttempts: attempts + 1
       });
 
       // 각 문제 생성 시 로그 출력
-      console.log(`\n=== 문제 ${i + 1} 생성 완료 ===`);
-      console.log(`유형: ${isObjective ? '객관식' : '주관식'}`);
+      console.log(`\n=== ${isObjective ? '객관식' : '주관식'} 문제 생성 완료 ===`);
       console.log(`문제: ${questionText}`);
       if (isObjective) {
         console.log('보기:');
@@ -533,6 +681,8 @@ app.post('/api/generate-test-questions', async (req, res) => {
         });
         console.log(`정답: ${correctAnswer}`);
       }
+      console.log('검증 결과:', validationFeedback);
+      console.log(`생성 시도 횟수: ${attempts + 1}`);
       console.log('===========================\n');
     }
 
@@ -541,7 +691,15 @@ app.post('/api/generate-test-questions', async (req, res) => {
     console.log(`생성된 문제 비율 - 객관식: ${objectiveCount}, 주관식: ${subjectiveCount}`);
     console.log('===========================\n');
 
-    res.json({ success: true, questions });
+    res.json({ 
+      success: true, 
+      questions,
+      statistics: {
+        objectiveCount,
+        subjectiveCount,
+        totalAttempts: questions.reduce((sum, q) => sum + q.generationAttempts, 0)
+      }
+    });
   } catch (error) {
     console.error('테스트 문제 생성 중 오류 발생:', error);
     res.status(500).json({ 
@@ -663,6 +821,41 @@ app.post('/api/test-result', async (req, res) => {
   } catch (err) {
     console.error('❌ 테스트 결과 저장 오류:', err);
     res.status(500).json({ success: false, error: '저장 실패' });
+  }
+});
+
+// 문제 검증 API
+app.post('/api/validate-question', async (req, res) => {
+  const { question, answer, difficulty, keyword, options, isTest } = req.body;
+  
+  try {
+    let validationPrompt;
+    if (options) {
+      // 객관식 문제 검증
+      validationPrompt = validateObjectiveQuestionPrompt(question, options, answer, difficulty, keyword);
+    } else {
+      // 주관식 문제 검증
+      validationPrompt = isTest ? 
+        validateTestQuestionPrompt(question, difficulty, keyword) :
+        validateLearningQuestionPrompt(question, answer, difficulty, keyword);
+    }
+    
+    const validationResult = await callGemini(validationPrompt);
+    
+    // 검증 결과 파싱
+    const validationStatus = validationResult.includes('최종 검증 결과: 통과');
+    const feedback = validationResult;
+    
+    res.json({
+      isValid: validationStatus,
+      feedback: feedback
+    });
+  } catch (error) {
+    console.error('문제 검증 중 오류 발생:', error);
+    res.status(500).json({ 
+      error: "문제 검증 중 오류가 발생했습니다.",
+      details: error.message 
+    });
   }
 });
 

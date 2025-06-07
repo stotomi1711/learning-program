@@ -250,7 +250,7 @@ function MockTest() {
       title: '초급 테스트',
       description: '기본적인 개념과 문제 해결 능력을 평가하는 테스트입니다.',
       duration: '60분',
-      questions: 10,
+      questions: 5,
       difficulty: '초급',
       color: '#4CAF50',
     },
@@ -259,7 +259,7 @@ function MockTest() {
       title: '중급 테스트',
       description: '기초 개념을 바탕으로 문제 해결력과 사고력을 심화하여 평가하는 중급 단계의 테스트입니다.',
       duration: '60분',
-      questions: 10,
+      questions: 5,
       difficulty: '중급',
       color: '#FF9800',
     },
@@ -268,7 +268,7 @@ function MockTest() {
       title: '심화 테스트',
       description: '심화된 개념과 복잡한 문제 해결 능력을 평가하는 테스트입니다.',
       duration: '60분',
-      questions: 10,
+      questions: 5,
       difficulty: '고급',
       color: '#F44336',
     },
@@ -277,7 +277,7 @@ function MockTest() {
       title: '종합 테스트',
       description: '기초 개념부터 고급 응용까지 전 범위의 내용을 아우르는 종합 테스트입니다.',
       duration: '60분',
-      questions: 10,
+      questions: 5,
       difficulty: '초급,중급,고급',
       color: '#2196F3',
     },
@@ -310,9 +310,12 @@ function MockTest() {
   };
 
   const handleConfirmStart = async () => {
-    setOpenStartDialog(false);
     setIsLoading(true);
     setShowLoadingDialog(true);
+    setOpenStartDialog(false);
+    setOpenKeywordDialog(false);
+    setOpenCategoryDialog(false);
+
     try {
       const response = await fetch('http://localhost:5000/api/generate-test-questions', {
         method: 'POST',
@@ -320,34 +323,27 @@ function MockTest() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          difficulty: currentTest.difficulty,
-          count: currentTest.questions,
-          userId: user?.userId || null,
-          keyword: customKeyword.trim(),
-          category: selectedCategory.name
+          difficulty: '중급',
+          count: 5,
+          userId: user?.id,
+          keyword: customKeyword,
+          category: selectedCategory?.name
         }),
       });
 
+      if (!response.ok) {
+        throw new Error('문제 생성에 실패했습니다.');
+      }
+
       const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || '테스트 문제 생성에 실패했습니다.');
-      }
-
-      if (!data.questions || data.questions.length === 0) {
-        throw new Error('생성된 문제가 없습니다.');
-      }
-
       setTestQuestions(data.questions);
+      setUserAnswers(new Array(5).fill(null));
+      setCurrentQuestion(0);
       setIsTestStarted(true);
-      setUserAnswers(new Array(data.questions.length).fill(null));
-      setTimeLeft(3600); // 60분
-      // 테스트 시작 상태 App에 알림
-      window.dispatchEvent(new CustomEvent('updateLearningState', { detail: { isTesting: true } }));
+      setTimeLeft(3600);
     } catch (error) {
-      console.error('Error:', error);
-      alert(`테스트 문제 생성 중 오류가 발생했습니다: ${error.message}`);
-      setIsTestStarted(false);
+      console.error('문제 생성 중 오류:', error);
+      alert('문제 생성 중 오류가 발생했습니다.');
     } finally {
       setIsLoading(false);
       setShowLoadingDialog(false);
@@ -653,30 +649,29 @@ function MockTest() {
 
   if (isTestStarted) {
     return (
-      <Container maxWidth="md" sx={{ mt: 4 }}>
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Typography variant="h4" component="h1" gutterBottom align="center">
+          모의고사
+        </Typography>
+        <Typography variant="subtitle1" gutterBottom align="center" color="text.secondary">
+          총 5문제 (객관식 3문제, 주관식 2문제) / 제한시간 60분
+        </Typography>
         <Card sx={{ 
           background: 'rgba(255, 255, 255, 0.1)',
           backdropFilter: 'blur(10px)',
-          borderRadius: '20px',
-          boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
-          border: '1px solid rgba(255, 255, 255, 0.18)',
-          overflow: 'hidden'
+          borderRadius: 2,
+          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+          mb: 3
         }}>
-          <CardContent sx={{ p: 4 }}>
-            <Box sx={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center',
-              mb: 4
-            }}>
-              <Typography variant="h5" sx={{ color: '#fff' }}>
-                문제 {currentQuestion + 1}/{testQuestions.length}
+          <CardContent>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6">
+                문제 {currentQuestion + 1}/5
               </Typography>
-              <Typography variant="h5" sx={{ color: '#fff' }}>
+              <Typography variant="h6" color="primary">
                 남은 시간: {formatTime(timeLeft)}
               </Typography>
             </Box>
-
             <Box sx={{
               background: 'rgba(0, 0, 0, 0.2)',
               borderRadius: '12px',
