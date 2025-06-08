@@ -74,6 +74,8 @@ function Learning() {
     java: 62,
     c: 50,
     cpp: 54,
+    csharp: 51,
+    php: 68
     // 필요한 언어 추가
   };
 

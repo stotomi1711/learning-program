@@ -45,6 +45,7 @@ function MockTest() {
   const [output, setOutput] = useState('');
   const [isLoadingCompile, setIsLoadingCompile] = useState(false);
   const [showEditor, setShowEditor] = useState(false);
+  const [selectedKeyword, setSelectedKeyword] = useState('');
 
   const categories = [
     { 
@@ -80,6 +81,30 @@ function MockTest() {
       ]
     }
   ];
+
+  const languageMap = {
+    python: 71,
+    javascript: 63,
+    java: 62,
+    c: 50,
+    cpp: 54,
+    csharp: 51,
+    php: 68
+    // 필요한 언어 추가
+  };
+
+    const getMonacoLanguage = (name) => {
+      switch (name.toLowerCase()) {
+        case 'python': return 'python';
+        case 'c': return 'c';
+        case 'c++': return 'cpp';
+        case 'c#': return 'csharp';
+        case 'java': return 'java';
+        case 'javascript': return 'javascript';
+        case 'php': return 'php';
+        default: return 'plaintext'; // 기본값으로 설정
+      }
+  };
 
   const handleTestComplete = useCallback(() => {
     setIsLoading(true);
@@ -303,7 +328,8 @@ function MockTest() {
   };
 
   const handleKeywordSelect = (keyword) => {
-    setCustomKeyword(keyword);
+    setCustomKeyword(keyword.name);
+    setSelectedKeyword(keyword);
     setOpenKeywordDialog(false);
     setOpenStartDialog(true);
   };
@@ -420,52 +446,41 @@ function MockTest() {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [isTestStarted, showResults]);
-  
-  const getMonacoLanguage = (name) => {
-    switch (name.toLowerCase()) {
-      case 'python': return 'python';
-      case 'c': return 'c';
-      case 'c++': return 'cpp';
-      case 'c#': return 'csharp';
-      case 'java': return 'java';
-      case 'javascript': return 'javascript';
-      case 'php': return 'php';
-      default: return 'plaintext';
-    }
-  };
 
   const handleCompileCode = async () => {
     if (!codeAnswer.trim()) {
       alert('코드를 입력해주세요.');
       return;
     }
-
     setIsLoadingCompile(true);
+    const languageId = languageMap[selectedKeyword.name.toLowerCase()];
+    if (!languageId) {
+      alert('지원하지 않는 언어입니다.');
+      setIsLoadingCompile(false);
+      return;
+    }
+
     try {
-      const response = await fetch('http://localhost:5000/api/compile', {
+      const response = await fetch('http://localhost:5000/api/compile-code', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           code: codeAnswer,
-          language: getMonacoLanguage(testQuestions[currentQuestion].language || 'javascript')
+          languageId: languageId,
         }),
       });
 
-      if (!response.ok) {
-        throw new Error('컴파일 중 오류가 발생했습니다.');
-      }
+      if (!response.ok) throw new Error('코드 실행에 실패했습니다.');
 
       const data = await response.json();
-      setOutput(data.output || data.error || '실행 결과가 없습니다.');
+      setOutput(data.output || ''); 
     } catch (error) {
-      console.error('컴파일 에러:', error);
-      setOutput('컴파일 중 오류가 발생했습니다: ' + error.message);
+      alert(`컴파일 중 오류: ${error.message}`);
     } finally {
       setIsLoadingCompile(false);
     }
-  };
+};
+
 
   if (isLoading) {
     return (
@@ -858,7 +873,7 @@ function MockTest() {
             <CardContent sx={{ p: 4 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                 <Typography variant="h5">
-                  코드 입력 및 실행
+                  코드 입력 및 실행 - {selectedKeyword.name}
                 </Typography>
                 <Button
                   variant="outlined"
@@ -880,7 +895,7 @@ function MockTest() {
                 <>
                   <Editor
                     height="300px"
-                    language={getMonacoLanguage(testQuestions[currentQuestion].language || 'javascript')}
+                    language={getMonacoLanguage(selectedKeyword.name)}
                     value={codeAnswer}
                     onChange={(val) => setCodeAnswer(val || '')}
                     theme="vs-dark"
@@ -1263,7 +1278,7 @@ function MockTest() {
                 <Grid item xs={6} key={keyword.name}>
                   <Button
                     fullWidth
-                    onClick={() => handleKeywordSelect(keyword.name)}
+                    onClick={() => handleKeywordSelect(keyword)}
                     sx={{
                       height: '60px',
                       borderRadius: '16px',
