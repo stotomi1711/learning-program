@@ -55,7 +55,7 @@ function MockTest() {
         { name: 'HTML', color: '#FF9800' },
         { name: 'Swift', color: '#F44336' },
         { name: 'Kotlin', color: '#795548' },
-        { name: 'TypeScript', color: '#2196F3' }
+        { name: 'CSS', color: '#2196F3' }
       ]
     },
     { 
