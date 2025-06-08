@@ -19,6 +19,8 @@ import {
 import { useUser } from './contexts/UserContext';
 import { useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
+import Editor from '@monaco-editor/react';
+
 
 function MockTest() {
   const { user } = useUser();
@@ -39,6 +41,10 @@ function MockTest() {
   const [testResults, setTestResults] = useState(null);
   const [showLoadingDialog, setShowLoadingDialog] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [codeAnswer, setCodeAnswer] = useState('');
+  const [output, setOutput] = useState('');
+  const [isLoadingCompile, setIsLoadingCompile] = useState(false);
+  const [showEditor, setShowEditor] = useState(false);
 
   const categories = [
     { 
@@ -78,7 +84,7 @@ function MockTest() {
   const handleTestComplete = useCallback(() => {
     setIsLoading(true);
     
-    const saveTestResult = async (userId, title, results) => {
+    const saveTestResult = async (userId, title, results) => {  
       try {
         const response = await fetch('http://localhost:5000/api/test-result', {
           method: 'POST',
@@ -278,7 +284,7 @@ function MockTest() {
       description: '기초 개념부터 고급 응용까지 전 범위의 내용을 아우르는 종합 테스트입니다.',
       duration: '60분',
       questions: 5,
-      difficulty: '초급,중급,고급',
+      difficulty: '종합',
       color: '#2196F3',
     },
   ];
@@ -323,7 +329,7 @@ function MockTest() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          difficulty: '중급',
+          difficulty: currentTest.difficulty,
           count: 5,
           userId: user?.id,
           keyword: customKeyword,
@@ -414,6 +420,52 @@ function MockTest() {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [isTestStarted, showResults]);
+  
+  const getMonacoLanguage = (name) => {
+    switch (name.toLowerCase()) {
+      case 'python': return 'python';
+      case 'c': return 'c';
+      case 'c++': return 'cpp';
+      case 'c#': return 'csharp';
+      case 'java': return 'java';
+      case 'javascript': return 'javascript';
+      case 'php': return 'php';
+      default: return 'plaintext';
+    }
+  };
+
+  const handleCompileCode = async () => {
+    if (!codeAnswer.trim()) {
+      alert('코드를 입력해주세요.');
+      return;
+    }
+
+    setIsLoadingCompile(true);
+    try {
+      const response = await fetch('http://localhost:5000/api/compile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          code: codeAnswer,
+          language: getMonacoLanguage(testQuestions[currentQuestion].language || 'javascript')
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('컴파일 중 오류가 발생했습니다.');
+      }
+
+      const data = await response.json();
+      setOutput(data.output || data.error || '실행 결과가 없습니다.');
+    } catch (error) {
+      console.error('컴파일 에러:', error);
+      setOutput('컴파일 중 오류가 발생했습니다: ' + error.message);
+    } finally {
+      setIsLoadingCompile(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -792,6 +844,70 @@ function MockTest() {
             )}
           </CardContent>
         </Card>
+        
+        {currentQuestion !== null && testQuestions[currentQuestion] && selectedCategory?.name === '프로그래밍 언어' && (
+          <Card sx={{ 
+            background: 'rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(10px)',
+            borderRadius: '20px',
+            boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+            border: '1px solid rgba(255, 255, 255, 0.18)',
+            overflow: 'hidden',
+            mb: 4
+          }}>
+            <CardContent sx={{ p: 4 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h5">
+                  코드 입력 및 실행
+                </Typography>
+                <Button
+                  variant="outlined"
+                  onClick={() => setShowEditor(!showEditor)}
+                  sx={{
+                    color: 'primary.main',
+                    borderColor: 'primary.main',
+                    '&:hover': {
+                      borderColor: 'primary.main',
+                      backgroundColor: 'rgba(0, 180, 216, 0.1)',
+                    },
+                  }}
+                >
+                  {showEditor ? '에디터 숨기기' : '에디터 보기'}
+                </Button>
+              </Box>
+
+              {showEditor && (
+                <>
+                  <Editor
+                    height="300px"
+                    language={getMonacoLanguage(testQuestions[currentQuestion].language || 'javascript')}
+                    value={codeAnswer}
+                    onChange={(val) => setCodeAnswer(val || '')}
+                    theme="vs-dark"
+                    options={{ minimap: { enabled: false }, fontSize: 14 }}
+                  />
+
+                  <Button
+                    variant="contained"
+                    onClick={handleCompileCode}
+                    sx={{ mt: 2 }}
+                    disabled={isLoadingCompile}
+                  >
+                    {isLoadingCompile ? <CircularProgress size={20} /> : '컴파일 시작'}
+                  </Button>
+
+                  {output && (
+                    <Box sx={{ mt: 3, whiteSpace: 'pre-wrap', fontFamily: 'monospace', bgcolor: '#000', color: '#0f0', p: 2, borderRadius: 2 }}>
+                      <Typography variant="subtitle1">실행 결과</Typography>
+                      <div>{output}</div>
+                    </Box>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
 
         <Dialog
           open={showConfirmDialog}

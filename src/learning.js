@@ -40,6 +40,7 @@ function Learning() {
   const [isLoadingCompile, setIsLoadingCompile] = useState(false);
   const [showLoadingDialog, setShowLoadingDialog] = useState(false);
   const [correctAnswer, setCorrectAnswer] = useState('');
+  const [showEditor, setShowEditor] = useState(false);
   const navigate = useNavigate();
   
 
@@ -394,36 +395,66 @@ function Learning() {
               </ReactMarkdown>
             </Box>
 
-            <Box sx={{ p: 4 }}>
-                <Typography variant="h5" gutterBottom>
-                  코드 입력 및 실행 - {selectedItem.name}
-                </Typography>
-
-                <Editor
-                  height="300px"
-                  language={getMonacoLanguage(selectedItem.name)}
-                  value={codeAnswer}
-                  onChange={(val) => setCodeAnswer(val || '')}
-                  theme="vs-dark"
-                  options={{ minimap: { enabled: false }, fontSize: 14 }}
-                />
-
-                <Button
-                  variant="contained"
-                  onClick={handleCompileCode}
-                  sx={{ mt: 2 }}
-                  disabled={isLoadingCompile}
-                >
-                  {isLoadingCompile ? <CircularProgress size={20} /> : '컴파일 시작'}
-                </Button>
-
-                {output && (
-                  <Box sx={{ mt: 3, whiteSpace: 'pre-wrap', fontFamily: 'monospace', bgcolor: '#000', color: '#0f0', p: 2, borderRadius: 2 }}>
-                    <Typography variant="subtitle1">실행 결과</Typography>
-                    <div>{output}</div>
+            {category === '프로그래밍 언어' && (
+              <Box sx={{ 
+                background: 'rgba(0, 0, 0, 0.2)',
+                borderRadius: '12px',
+                p: 3,
+                mb: 4,
+                border: '1px solid rgba(255, 255, 255, 0.1)'
+              }}>
+                <>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Typography variant="h5">
+                      코드 입력 및 실행 - {selectedItem.name}
+                    </Typography>
+                    <Button
+                      variant="outlined"
+                      onClick={() => setShowEditor(!showEditor)}
+                      sx={{
+                        color: 'primary.main',
+                        borderColor: 'primary.main',
+                        '&:hover': {
+                          borderColor: 'primary.main',
+                          backgroundColor: 'rgba(0, 180, 216, 0.1)',
+                        },
+                      }}
+                    >
+                      {showEditor ? '에디터 숨기기' : '에디터 보기'}
+                    </Button>
                   </Box>
-                )}
-            </Box>
+
+                  {showEditor && (
+                    <>
+                      <Editor
+                        height="300px"
+                        language={getMonacoLanguage(selectedItem.name)}
+                        value={codeAnswer}
+                        onChange={(val) => setCodeAnswer(val || '')}
+                        theme="vs-dark"
+                        options={{ minimap: { enabled: false }, fontSize: 14 }}
+                      />
+
+                      <Button
+                        variant="contained"
+                        onClick={handleCompileCode}
+                        sx={{ mt: 2 }}
+                        disabled={isLoadingCompile}
+                      >
+                        {isLoadingCompile ? <CircularProgress size={20} /> : '컴파일 시작'}
+                      </Button>
+
+                      {output && (
+                        <Box sx={{ mt: 3, whiteSpace: 'pre-wrap', fontFamily: 'monospace', bgcolor: '#000', color: '#0f0', p: 2, borderRadius: 2 }}>
+                          <Typography variant="subtitle1">실행 결과</Typography>
+                          <div>{output}</div>
+                        </Box>
+                      )}
+                    </>
+                  )}
+                </>
+              </Box>
+            )}
 
             <Box sx={{ p: 4 }}>
                 <Typography variant="h5" gutterBottom>

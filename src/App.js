@@ -122,6 +122,7 @@ function AppContent() {
   const [openStartDialog, setOpenStartDialog] = useState(false);
   const [openGuestWarningDialog, setOpenGuestWarningDialog] = useState(false);
   const [openLogoutDialog, setOpenLogoutDialog] = useState(false);
+  const [openCategoryDialog, setOpenCategoryDialog] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
 
@@ -143,12 +144,17 @@ function AppContent() {
 
   const handleStartAsGuest = () => {
     setOpenStartDialog(false);
-    setOpenGuestWarningDialog(true);
+    setOpenCategoryDialog(true);
+  };
+
+  const handleCategorySelect = (category) => {
+    setOpenCategoryDialog(false);
+    navigate('/learning', { state: { category } });
   };
 
   const handleConfirmGuestStart = () => {
     setOpenGuestWarningDialog(false);
-    navigate('/learning');
+    setOpenCategoryDialog(true);
   };
 
   const handleLoginRedirect = () => {
@@ -616,6 +622,125 @@ function AppContent() {
                   }}
                 >
                   로그인하러 가기
+                </Button>
+              </DialogActions>
+            </Dialog>
+
+            {/* 카테고리 선택 다이얼로그 */}
+            <Dialog
+              open={openCategoryDialog}
+              onClose={() => setOpenCategoryDialog(false)}
+              PaperProps={{
+                sx: {
+                  background: 'rgba(17, 24, 39, 0.95)',
+                  backdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '20px',
+                  maxWidth: '500px',
+                  width: '100%',
+                },
+              }}
+            >
+              <DialogTitle sx={{ 
+                color: 'primary.main',
+                textAlign: 'center',
+                fontSize: '1.8rem',
+                fontWeight: 'bold',
+                pt: 3
+              }}>
+                카테고리 선택
+              </DialogTitle>
+              <DialogContent sx={{ p: 3 }}>
+                <Typography sx={{ 
+                  mb: 4, 
+                  color: '#fff',
+                  textAlign: 'center',
+                  fontSize: '1.1rem',
+                  opacity: 0.8
+                }}>
+                  학습할 카테고리를 선택해주세요
+                </Typography>
+                <Grid container spacing={2}>
+                  {[
+                    {
+                      name: '프로그래밍 언어',
+                      description: '다양한 프로그래밍 언어 학습',
+                      color: '#2196F3'
+                    },
+                    {
+                      name: '자격증',
+                      description: 'IT 자격증 관련 학습',
+                      color: '#4CAF50'
+                    }
+                  ].map((category) => (
+                    <Grid item xs={12} key={category.name}>
+                      <Button
+                        fullWidth
+                        onClick={() => handleCategorySelect(category.name)}
+                        sx={{
+                          p: 2,
+                          borderRadius: '16px',
+                          background: `linear-gradient(45deg, ${category.color} 30%, ${category.color}99 90%)`,
+                          color: 'white',
+                          textAlign: 'left',
+                          justifyContent: 'flex-start',
+                          transition: 'all 0.3s ease',
+                          '&:hover': {
+                            transform: 'translateY(-5px)',
+                            boxShadow: `0 10px 20px ${category.color}40`,
+                          }
+                        }}
+                      >
+                        <Box sx={{ 
+                          display: 'flex', 
+                          flexDirection: 'column',
+                          alignItems: 'flex-start',
+                          width: '100%',
+                          gap: 0.5
+                        }}>
+                          <Typography sx={{ 
+                            fontSize: '1.4rem',
+                            fontWeight: 'bold',
+                            letterSpacing: '0.5px'
+                          }}>
+                            {category.name}
+                          </Typography>
+                          <Typography sx={{ 
+                            fontSize: '0.9rem',
+                            opacity: 0.9,
+                            textAlign: 'left'
+                          }}>
+                            {category.description}
+                          </Typography>
+                        </Box>
+                      </Button>
+                    </Grid>
+                  ))}
+                </Grid>
+              </DialogContent>
+              <DialogActions sx={{ 
+                justifyContent: 'center', 
+                gap: 2, 
+                pb: 3,
+                pt: 1
+              }}>
+                <Button
+                  onClick={() => setOpenCategoryDialog(false)}
+                  variant="outlined"
+                  sx={{
+                    color: 'primary.main',
+                    borderColor: 'primary.main',
+                    borderRadius: '25px',
+                    px: 4,
+                    py: 1,
+                    fontSize: '1rem',
+                    '&:hover': {
+                      borderColor: 'primary.main',
+                      backgroundColor: 'rgba(0, 180, 216, 0.1)',
+                    },
+                  }}
+                >
+                  취소
                 </Button>
               </DialogActions>
             </Dialog>
