@@ -19,6 +19,7 @@ import {
 import { useUser } from './contexts/UserContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Editor from '@monaco-editor/react';
+import ReactMarkdown from 'react-markdown';
 
 function Learning() {
   const { user } = useUser();
@@ -38,6 +39,8 @@ function Learning() {
   const [output, setOutput] = useState('');
   const [isLoadingCompile, setIsLoadingCompile] = useState(false);
   const [showLoadingDialog, setShowLoadingDialog] = useState(false);
+  const [correctAnswer, setCorrectAnswer] = useState('');
+  const [showEditor, setShowEditor] = useState(false);
   const navigate = useNavigate();
   
 
@@ -71,6 +74,8 @@ function Learning() {
     java: 62,
     c: 50,
     cpp: 54,
+    csharp: 51,
+    php: 68
     // 필요한 언어 추가
   };
 
@@ -155,6 +160,8 @@ function Learning() {
         throw new Error('생성된 문제가 없습니다.');
       }
       setGeneratedQuestion(data.question);
+      // 정답만 상태로 저장하되 UI에는 표시하지 않음
+      setCorrectAnswer(data.answer);
       setShowInfoDialog(false);
     } catch (error) {
       console.error('Error:', error);
@@ -180,7 +187,7 @@ function Learning() {
       return;
     }
 
-  setIsLoading(true);
+    setIsLoading(true);
     try {
       const response = await fetch('http://localhost:5000/api/submit-answer', {
         method: 'POST',
@@ -192,6 +199,7 @@ function Learning() {
           keyword: selectedItem?.name,
           question: generatedQuestion,
           answer: userAnswer,
+          correctAnswer: correctAnswer
         }),
       });
 
@@ -235,8 +243,12 @@ function Learning() {
         throw new Error('생성된 문제가 없습니다.');
       }
       setGeneratedQuestion(data.question);
+      // 정답만 상태로 저장하되 UI에는 표시하지 않음
+      setCorrectAnswer(data.answer);
       setUserAnswer('');
-      setFeedback('');
+      setCodeAnswer('');
+      setFeedback(null);
+      setOutput('');
     } catch (error) {
       console.error('Error:', error);
       alert(`문제 생성 중 오류가 발생했습니다: ${error.message}`);
@@ -347,46 +359,104 @@ function Learning() {
               mb: 4,
               border: '1px solid rgba(255, 255, 255, 0.1)'
             }}>
-              <Typography variant="body1" sx={{ 
-                color: '#fff', 
-                whiteSpace: 'pre-line', 
-                fontSize: '1.1rem',
-                lineHeight: 1.6
-              }}>
+              <ReactMarkdown
+                components={{
+                  code: ({node, inline, className, children, ...props}) => {
+                    const match = /language-(\w+)/.exec(className || '');
+                    return !inline && match ? (
+                      <Box sx={{
+                        background: 'rgba(0, 0, 0, 0.3)',
+                        borderRadius: '8px',
+                        p: 2,
+                        mb: 2,
+                        overflowX: 'auto'
+                      }}>
+                        <Typography
+                          component="pre"
+                          sx={{
+                            color: '#fff',
+                            fontFamily: 'monospace',
+                            fontSize: '0.9rem',
+                            margin: 0,
+                            whiteSpace: 'pre-wrap'
+                          }}
+                          {...props}
+                        >
+                          {String(children).replace(/\n$/, '')}
+                        </Typography>
+                      </Box>
+                    ) : (
+                      <code className={className} {...props}>
+                        {children}
+                      </code>
+                    );
+                  }
+                }}
+              >
                 {generatedQuestion}
-              </Typography>
+              </ReactMarkdown>
             </Box>
 
-            <Box sx={{ p: 4 }}>
-                <Typography variant="h5" gutterBottom>
-                  코드 입력 및 실행 - {selectedItem.name}
-                </Typography>
-
-                <Editor
-                  height="300px"
-                  language={getMonacoLanguage(selectedItem.name)}
-                  value={codeAnswer}
-                  onChange={(val) => setCodeAnswer(val || '')}
-                  theme="vs-dark"
-                  options={{ minimap: { enabled: false }, fontSize: 14 }}
-                />
-
-                <Button
-                  variant="contained"
-                  onClick={handleCompileCode}
-                  sx={{ mt: 2 }}
-                  disabled={isLoadingCompile}
-                >
-                  {isLoadingCompile ? <CircularProgress size={20} /> : '컴파일 시작'}
-                </Button>
-
-                {output && (
-                  <Box sx={{ mt: 3, whiteSpace: 'pre-wrap', fontFamily: 'monospace', bgcolor: '#000', color: '#0f0', p: 2, borderRadius: 2 }}>
-                    <Typography variant="subtitle1">실행 결과</Typography>
-                    <div>{output}</div>
+            {category === '프로그래밍 언어' && (
+              <Box sx={{ 
+                background: 'rgba(0, 0, 0, 0.2)',
+                borderRadius: '12px',
+                p: 3,
+                mb: 4,
+                border: '1px solid rgba(255, 255, 255, 0.1)'
+              }}>
+                <>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Typography variant="h5">
+                      코드 입력 및 실행 - {selectedItem.name}
+                    </Typography>
+                    <Button
+                      variant="outlined"
+                      onClick={() => setShowEditor(!showEditor)}
+                      sx={{
+                        color: 'primary.main',
+                        borderColor: 'primary.main',
+                        '&:hover': {
+                          borderColor: 'primary.main',
+                          backgroundColor: 'rgba(0, 180, 216, 0.1)',
+                        },
+                      }}
+                    >
+                      {showEditor ? '에디터 숨기기' : '에디터 보기'}
+                    </Button>
                   </Box>
-                )}
-            </Box>
+
+                  {showEditor && (
+                    <>
+                      <Editor
+                        height="300px"
+                        language={getMonacoLanguage(selectedItem.name)}
+                        value={codeAnswer}
+                        onChange={(val) => setCodeAnswer(val || '')}
+                        theme="vs-dark"
+                        options={{ minimap: { enabled: false }, fontSize: 14 }}
+                      />
+
+                      <Button
+                        variant="contained"
+                        onClick={handleCompileCode}
+                        sx={{ mt: 2 }}
+                        disabled={isLoadingCompile}
+                      >
+                        {isLoadingCompile ? <CircularProgress size={20} /> : '컴파일 시작'}
+                      </Button>
+
+                      {output && (
+                        <Box sx={{ mt: 3, whiteSpace: 'pre-wrap', fontFamily: 'monospace', bgcolor: '#000', color: '#0f0', p: 2, borderRadius: 2 }}>
+                          <Typography variant="subtitle1">실행 결과</Typography>
+                          <div>{output}</div>
+                        </Box>
+                      )}
+                    </>
+                  )}
+                </>
+              </Box>
+            )}
 
             <Box sx={{ p: 4 }}>
                 <Typography variant="h5" gutterBottom>
@@ -450,7 +520,7 @@ function Learning() {
                   alignItems: 'center',
                   gap: 1
                 }}>
-                  <span role="img" aria-label="feedback">💡</span> 피드백
+                  <span role="img" aria-label="feedback">💡</span> 해설
                 </Typography>
                 <Typography variant="body1" sx={{ 
                   color: '#fff', 
