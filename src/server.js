@@ -753,12 +753,14 @@ app.post('/api/compile-code', async (req, res) => {
 
   try {
     // 1. 코드 제출
+    console.log('사용되는 API 키:', process.env.RAPIDAPI_KEY);
+    console.log('Judge0 API URL:', process.env.JUDGE0_API_URL);
     const submitRes = await fetch(`${process.env.JUDGE0_API_URL}?base64_encoded=false&wait=true`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-RapidAPI-Host': RAPIDAPI_HOST,
-        'X-RapidAPI-Key': process.env.GEMINI_API_KEY,
+        'X-RapidAPI-Key': process.env.RAPIDAPI_KEY,
       },
       body: JSON.stringify({ source_code: code, language_id: languageId }),
     });
