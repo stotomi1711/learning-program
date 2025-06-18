@@ -1,0 +1,2 @@
+{"text":"**\n\n다음은 Python 코드입니다. 이 코드의 실행 결과를 예측하고, 각 줄이 어떤 역할을 하는지 간략하게 설명하시오.\n\n```python\nx = 5\ny = \"Hello\"\nprint(x + 3)\nprint(y + \", World!\")\n```\n\n**","label":1}
+{"text":"**\n\n다음 Python 코드를 실행했을 때 출력되는 결과는 무엇이며, 그 이유는 무엇인가?\n\n```python\nx = 5\ny = \"5\"\n\nif x == y:\n    print(\"같다\")\nelse:\n    print(\"다르다\")\n```\n\n**","label":1}
