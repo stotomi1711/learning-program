@@ -5,6 +5,9 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const ReactMarkdown = require('react-markdown');
 const { generateQuestionPrompt, generateFeedbackPrompt, generateMultipleQuestionsPrompt, evaluateAnswerPrompt, validateLearningQuestionPrompt, validateTestQuestionPrompt, validateObjectiveQuestionPrompt } = require('./prompt');
+const path = require('path');
+const { execFile } = require('child_process');
+const fs = require('fs');
 
 const app = express();
 
@@ -63,6 +66,25 @@ const TestSchema = mongoose.model('testSchema', testSchema);
 // 미들웨어 설정
 app.use(cors());
 app.use(express.json());
+
+function verifyWithCodeBERT(questionText) {
+  return new Promise((resolve, reject) => {
+    // ✅ 루트에서 src 폴더로 경로 이동
+    const scriptPath = path.join(__dirname, 'verify_problem.py');
+
+    execFile('python', [scriptPath, questionText], (error, stdout, stderr) => {
+      console.log('=== CodeBERT 실행됨 ===');
+      if (error) {
+        console.error('CodeBERT 실행 오류:', error);
+        console.error('stderr:', stderr);
+        reject(error);
+      } else {
+        const result = parseInt(stdout.trim());
+        resolve(result);
+      }
+    });
+  });
+}
 
 // 회원가입 API
 app.post('/api/register', async (req, res) => {
@@ -384,6 +406,7 @@ app.post('/api/generate-question', async (req, res) => {
     let question, answer;
     let isValid = false;
     let validationFeedback = '';
+    let bertStatus = 0;
     let attempts = 0;
     const maxAttempts = 3;
 
@@ -396,33 +419,47 @@ app.post('/api/generate-question', async (req, res) => {
       const response = await callGemini(prompt);
       console.log('생성된 응답:', response);
 
-      // 응답에서 문제와 정답 분리
+      // 문제와 정답 추출
       const questionMatch = response.match(/문제:\s*([\s\S]*?)(?=객관식 보기:|정답:|$)/);
       const answerMatch = response.match(/정답:\s*([\s\S]*?)$/);
 
       question = questionMatch ? questionMatch[1].trim() : response;
       answer = answerMatch ? answerMatch[1].trim() : '';
 
-      // 학습 문제 검증
+      // ✅ Gemini 검증
       const validationPrompt = validateLearningQuestionPrompt(question, answer, difficulty, keyword);
       const validationResult = await callGemini(validationPrompt);
-      
-      // 검증 결과 파싱
+      console.log('Gemini 검증 결과:', validationResult);
+
+      // ✅ Gemini 통과 여부
       const resultMatch = validationResult.match(/최종 검증 결과:\s*\[?(통과|실패)\]?/);
-      isValid = resultMatch && resultMatch[1] === '통과';
+      const geminiStatus = resultMatch && resultMatch[1] === '통과';
+
+      // ✅ CodeBERT 검증
+      bertStatus = await verifyWithCodeBERT(question);
+      console.log('CodeBERT 검증 결과:', bertStatus);
+
+      // ✅ 둘 다 통과해야 최종 통과
+      isValid = geminiStatus && bertStatus === 1;
       validationFeedback = validationResult;
 
       if (!isValid) {
-        console.log(`문제 검증 실패 (시도 ${attempts + 1}/${maxAttempts}):`, validationFeedback);
+        console.log(`문제 검증 실패 (시도 ${attempts + 1}/${maxAttempts}):`, validationFeedback, '| CodeBERT:', bertStatus);
         attempts++;
-        
-        // 마지막 시도가 아니면 잠시 대기
         if (attempts < maxAttempts) {
           await new Promise(resolve => setTimeout(resolve, 1000));
         }
       } else {
         console.log('문제 검증 통과!');
-        break;  // 검증 통과 시 즉시 루프 종료
+        // --- 여기서 통과된 문제 저장 ---
+        const savePath = path.join(__dirname, 'labeled_dataset.jsonl');
+        const labeledItem = { text: question, label: 1 };
+
+        // JSONL 형식으로 한 줄씩 append
+        fs.appendFileSync(savePath, JSON.stringify(labeledItem, null, 0) + "\n", { encoding: 'utf-8' });
+        console.log(`✅ 검증된 문제 저장 완료: ${savePath}`);
+
+        break;
       }
     }
 
@@ -826,7 +863,7 @@ app.post('/api/test-result', async (req, res) => {
 // 문제 검증 API
 app.post('/api/validate-question', async (req, res) => {
   const { question, answer, difficulty, keyword, options, isTest } = req.body;
-  
+
   try {
     let validationPrompt;
     if (options) {
@@ -834,26 +871,32 @@ app.post('/api/validate-question', async (req, res) => {
       validationPrompt = validateObjectiveQuestionPrompt(question, options, answer, difficulty, keyword);
     } else {
       // 주관식 문제 검증
-      validationPrompt = isTest ? 
+      validationPrompt = isTest ?
         validateTestQuestionPrompt(question, difficulty, keyword) :
         validateLearningQuestionPrompt(question, answer, difficulty, keyword);
     }
-    
+
+    // Gemini 검증
     const validationResult = await callGemini(validationPrompt);
-    
-    // 검증 결과 파싱
-    const validationStatus = validationResult.includes('최종 검증 결과: 통과');
-    const feedback = validationResult;
-    
+    const geminiStatus = validationResult.includes('최종 검증 결과: 통과');
+
+    // CodeBERT 검증 (Python)
+    const bertStatus = await verifyWithCodeBERT(question); // 0 or 1
+
+    // 두 검증 모두 통과해야 true
+    const isValid = geminiStatus && bertStatus === 1;
+
     res.json({
-      isValid: validationStatus,
-      feedback: feedback
+      isValid,
+      geminiFeedback: validationResult,
+      bertFeedback: bertStatus === 1 ? 'CodeBERT: 통과' : 'CodeBERT: 실패'
     });
+
   } catch (error) {
     console.error('문제 검증 중 오류 발생:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: "문제 검증 중 오류가 발생했습니다.",
-      details: error.message 
+      details: error.message
     });
   }
 });
