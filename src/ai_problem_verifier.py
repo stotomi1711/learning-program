@@ -121,8 +121,14 @@ if __name__ == "__main__":
         compute_metrics=compute_metrics,
     )
 
-    trainer.train()
+      # 평가
     eval_result = trainer.evaluate()
     print('검증 결과:', eval_result)
+
+    # 모델 저장
     model.save_pretrained('./trained_problem_verifier')
-    print('모델 학습 및 저장 완료!') 
+
+    # 토크나이저 저장 (중요!)
+    tokenizer.save_pretrained('./trained_problem_verifier')
+
+    print('모델 및 토크나이저 학습 및 저장 완료!')
